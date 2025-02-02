@@ -83,6 +83,65 @@ class PreprocessAndCache:
 
     def __len__(self):
         return len(self.information)
+    
+class PreprocessAndCache_for_single:
+    def __init__(self,left_img,right_img,cache_dir="./cache"):
+        #这里的左右图片全为路径
+        self.left_img = left_img
+        self.right_img = right_img
+        self.cache_dir = cache_dir
+        os.makedirs(cache_dir, exist_ok=True)
+        self.one_hot = ["N", "D", "G", "C", "A", "H", "M", "O"]
+        self._preprocess_and_cache()
+
+    def preprocess_img(self, img_path):
+        img = cv2.imread(img_path)
+        if img is None:
+            return np.ones((384, 384, 3)) * 255  # 这里可以返回一个全白图像作为默认值
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        print(f"Before CLAHE, img min: {img.min()}, max: {img.max()}")
+        lab = cv2.cvtColor(img, cv2.COLOR_RGB2LAB)
+        l, a, b = cv2.split(lab)
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        l = clahe.apply(l)
+        lab = cv2.merge((l, a, b))
+        img_clahe = cv2.cvtColor(lab, cv2.COLOR_LAB2RGB)
+        
+        gamma = 1.0
+        img_gamma = np.power(img_clahe / 255.0, gamma) * 255.0
+        
+        img_gamma = img_gamma.astype(np.uint8)
+        #plt.imshow(img_gamma)
+        #plt.axis('off')  # 关闭坐标轴
+        #plt.show()
+        return cv2.resize(img_gamma, (384, 384))
+
+
+    def merge_double_imgs(self, left_eye_path, right_eye_path):
+        left_img = self.preprocess_img(left_eye_path)
+        right_img = self.preprocess_img(right_eye_path)
+        return np.concatenate([left_img, right_img], axis=-1)
+
+    def _preprocess_and_cache(self):
+        #获取文件名
+        left_img_name,_ = os.path.splitext(self.left_img)
+        left_img_name = left_img_name.replace(".","").replace("/","_")
+        right_img_name,_ = os.path.splitext(self.right_img)
+        right_img_name = right_img_name.replace(".","").replace("/","_")
+        cache_path = f"{self.cache_dir}/{left_img_name}_{right_img_name}.npz"
+        if not os.path.exists(cache_path):
+            img = self.merge_double_imgs(self.left_img, self.right_img) / 255.0
+            np.savez_compressed(cache_path, img=img)
+
+    def __getitem__(self, index):
+        cache_path = os.path.join(self.cache_dir, f"{index}.npz")
+        data = np.load(cache_path)
+        return data["img"]
+
+
+    def __len__(self):
+        return 1
+
 
 if __name__ == "__main__":
     d1 = PreprocessAndCache("./Training_Dataset","Traning_Dataset.xlsx")
