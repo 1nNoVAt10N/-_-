@@ -3,8 +3,11 @@
   import { useRouter } from 'vue-router';
 
   const router = useRouter();
-  const startButton = () => {
-    router.push('/recognition');
+  const startButton1 = () => {
+    router.push('/singleRecognition');
+  };
+  const startButton2 = () => {
+    router.push('/multiRecognition');
   };
 </script>
 
@@ -19,17 +22,17 @@
       </div>
     </div>
     <div class="w-full flex items-center justify-end space-x-5">
-      <n-button type="primary" size="large" class="mt-5 mr-5" @click="startButton">
+      <n-button type="primary" size="large" class="mt-5 mr-5" @click="startButton1">
         <n-icon class="mr-3">
           <ArrowRight />
         </n-icon>
         <span>开始单模预测</span>
       </n-button>
-      <n-button type="primary" size="large" class="mt-5 ml-5" @click="startButton">
+      <n-button type="primary" size="large" class="mt-5 ml-5" @click="startButton2">
         <n-icon class="mr-3">
           <ArrowRight />
         </n-icon>
-        <span>现在开始</span>
+        <span>开始多模预测</span>
       </n-button>
     </div>
   </div>

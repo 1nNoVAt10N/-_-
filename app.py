@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify, send_from_directory, abort
 from flask_cors import CORS
+import shutil
 from predict import Predict
 import os
 import mimetypes
@@ -13,32 +14,55 @@ predictor = Predict(model_path, device="cpu")
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    if 'left_eye' not in request.files or 'right_eye' not in request.files:
-        return jsonify({'error': 'Both left_eye and right_eye files are required'}), 400
+    try:
+        if 'zip_file' in request.files:
+            zip_file = request.files['zip_file']
 
-    left_eye_file = request.files['left_eye']
-    right_eye_file = request.files['right_eye']
+            if not os.path.exists("temp"):
+                os.makedirs("temp")
 
-    if not os.path.exists("temp"):
-        os.makedirs("temp")
+            zip_path = os.path.join("temp", zip_file.filename)
 
-    left_eye_path = os.path.join("temp", left_eye_file.filename)
-    right_eye_path = os.path.join("temp", right_eye_file.filename)
+            zip_path = zip_path.replace("\\", "/")
 
-    left_eye_path = left_eye_path.replace("\\", "/")
-    right_eye_path = right_eye_path.replace("\\", "/")
+            zip_file.save(zip_path)
 
-    left_eye_file.save(left_eye_path)
-    right_eye_file.save(right_eye_path)
+            results = predictor.predict(imgs=zip_path, mode="batch")
 
-    print(left_eye_path, right_eye_path)
+            os.remove(zip_path)
 
-    results = predictor.predict(left_img=left_eye_path, right_img=right_eye_path, mode="single")
+            return jsonify(results)
 
-    os.remove(left_eye_path)
-    os.remove(right_eye_path)
+        elif 'left_eye' in request.files and 'right_eye' in request.files:
+            left_eye_file = request.files['left_eye']
+            right_eye_file = request.files['right_eye']
 
-    return jsonify(results)
+            if not os.path.exists("temp"):
+                os.makedirs("temp")
+
+            left_eye_path = os.path.join("temp", left_eye_file.filename)
+            right_eye_path = os.path.join("temp", right_eye_file.filename)
+
+            left_eye_path = left_eye_path.replace("\\", "/")
+            right_eye_path = right_eye_path.replace("\\", "/")
+
+            left_eye_file.save(left_eye_path)
+            right_eye_file.save(right_eye_path)
+
+            results = predictor.predict(left_img=left_eye_path, right_img=right_eye_path, mode="single")
+
+            os.remove(left_eye_path)
+            os.remove(right_eye_path)
+
+            return jsonify(results)
+
+        else:
+            return jsonify({'error': 'Both left_eye and right_eye files are required or a zip_file is required'}), 400
+    except Exception as e:
+        if os.path.exists("temp"):
+            shutil.rmtree("temp")
+        return jsonify({'error': str(e)}), 500
+
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
