@@ -94,10 +94,15 @@ class Predict:
                     labels = torch.rand(8)
                     labels = (labels > 0.5).float()
                     
-                    batch_results[img_file] = []
+                    img_file_name,_ = os.path.splitext(img_file)
+                    img_file_name = img_file_name.replace(".", "").replace("/", "_")
+                    img_file_name = img_file_name.split("_")[0] + "_left_right"
+                    if (img_file_name in batch_results.keys()):
+                        continue
+                    batch_results[img_file_name] = []
                     for i in range(8):
                         if labels[i] > 0.5:
-                            batch_results[img_file].append(one_hot_to_name[str(i)])
+                            batch_results[img_file_name].append(one_hot_to_name[str(i)])
 
             # 删除临时文件夹及解压的文件
             for file in os.listdir("./temp_images"):
@@ -110,7 +115,7 @@ class Predict:
 
 
 if __name__ == "__main__":
-    p = Predict("./models/model_vit_1.pth",device="cuda")
+    p = Predict("./models/model_vit_1.pth",device="cpu")
     ans = p.predict("./Training_Dataset/0_left.jpg","./Training_Dataset/0_right.jpg")
     ans2 = p.predict(imgs="hhh.zip",mode="batch")
     print(ans)
