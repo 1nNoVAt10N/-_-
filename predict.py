@@ -116,7 +116,7 @@ class Predict:
 
 if __name__ == "__main__":
     p = Predict("./models/model_vit_1.pth",device="cpu")
-    ans = p.predict("./Training_Dataset/0_left.jpg","./Training_Dataset/0_right.jpg")
+    ans = p.predict("./Temp/0_left.jpg","./Temp/0_right.jpg")
     ans2 = p.predict(imgs="hhh.zip",mode="batch")
     print(ans)
     print(ans2)

@@ -25,6 +25,9 @@ def predict():
     left_eye_path = os.path.join("temp", left_eye_file.filename)
     right_eye_path = os.path.join("temp", right_eye_file.filename)
 
+    left_eye_path = left_eye_path.replace("\\", "/")
+    right_eye_path = right_eye_path.replace("\\", "/")
+
     left_eye_file.save(left_eye_path)
     right_eye_file.save(right_eye_path)
 
