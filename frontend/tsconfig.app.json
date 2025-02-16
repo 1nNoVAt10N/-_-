@@ -16,6 +16,7 @@
     "allowJs": true,
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
+    "types": ["naive-ui/volar"]
   }
 }
