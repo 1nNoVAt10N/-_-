@@ -7,261 +7,214 @@ from vit_pytorch import ViT as V
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from WTFD import WTFD,WTFDown
-from FFA import FFA
-from HFF import HFF_block
-from main_model import HiFuse_Small 
 from efficientnet_pytorch import EfficientNet
-#from FreqFusion import FreqFusion
 
 
-    
-class ViTModel(nn.Module):
-    def __init__(self, num_classes=8):
-        super(ViTModel, self).__init__()
-        self.vit = ViT(image_size=384,name = 'B_16_imagenet1k',in_channels = 6,num_classes=8,pretrained=False) 
-        self.resnet = models.resnet50(pretrained=False)
-        self.resnet.fc = nn.Sequential(
-            nn.Linear(self.resnet.fc.in_features, 256)
-
-        )
-        self.resnet.conv1 = nn.Conv2d(6,64,kernel_size=7)
-        self.classifer = nn.Sequential(
-            nn.Linear(512,128),
-            nn.Dropout(0.5),
-            nn.Linear(128,num_classes)
-        )
-    def forward(self, x):
-        vit_fea = self.vit(x)
-        resnet_fea = self.resnet(x)
-        all_fea = torch.cat([vit_fea,resnet_fea],dim=1)
-        classes = self.classifer(all_fea)
-        return classes
-    
 
 
-class ResidualAttentionModule(nn.Module):
-    def __init__(self):
+class ResidualAttentionBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, reduction=16):
         super().__init__()
-        #backbone = resnet50(weights=ResNet50_Weights.IMAGENET1K_V2)
-        #self.resnet = nn.Sequential(*list(backbone.children())[:-2])
-        self.left_model = EfficientNet.from_pretrained('efficientnet-b3')
-        self.conv = nn.Conv2d(1536,1024,kernel_size=1)
-        self.attention = nn.Sequential(
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+
+        # ResNet基础残差结构
+        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(out_channels)
+        self.relu = nn.ReLU(inplace=True)
+        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False)
+        self.bn2 = nn.BatchNorm2d(out_channels)
+        self.relu2 = nn.ReLU(inplace=True)  # 添加ReLU函数
+        self.conv3 = nn.Conv2d(out_channels, out_channels * 4, kernel_size=1, bias=False)
+        self.bn3 = nn.BatchNorm2d(out_channels * 4)
+
+        # 通道注意力（SENet风格）
+        self.channel_att = nn.Sequential(
             nn.AdaptiveAvgPool2d(1),
-            nn.Conv2d(2048, 512, kernel_size=1),
-            nn.BatchNorm2d(512),
-            nn.Dropout(0.7),
-            nn.GELU(),
-            nn.Conv2d(512, 2048, kernel_size=1),
-            nn.BatchNorm2d(2048),
-            nn.Dropout(0.7),
+            nn.Conv2d(out_channels * 4, (out_channels * 4) // reduction, kernel_size=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d((out_channels * 4) // reduction, out_channels * 4, kernel_size=1),
             nn.Sigmoid()
         )
-        self.wtfd = WTFDown(in_ch=1536,out_ch=2048)
-        self.hff = HFF_block(ch_1=2048,ch_2 = 2048,r_2 = 32,ch_int=512,ch_out=2048,drop_rate=0.3)
 
+        # 空间注意力（CBAM风格）
+        self.spatial_att = nn.Sequential(
+            nn.Conv2d(2, 1, kernel_size=7, padding=3),
+            nn.Sigmoid()
+        )
+
+        # 下采样层（如果输入输出维度不匹配）
+        if in_channels != out_channels * 4:
+            self.downsample = nn.Sequential(
+                nn.Conv2d(in_channels, out_channels * 4, kernel_size=1, bias=False),
+                nn.BatchNorm2d(out_channels * 4)
+            )
+        else:
+            self.downsample = None
 
     def forward(self, x):
-        features = self.left_model.extract_features(x)  # [batch, 2048, 7, 7]
-        #print(features.shape)
-        fusion_fea= self.wtfd(features)
+        identity = x
 
-        #fusion_fea = self.hff(l=jf,g=qf,f=None)
-        attention_weights = self.attention(fusion_fea)  # [batch, 2048, 1, 1]
-        return fusion_fea * attention_weights   # 逐通道加权
-    
-class BidirectionalCrossAttention(nn.Module):
-    def __init__(self, dim, num_heads=8):
+        # 残差路径
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+        out = self.conv2(out)
+        out = self.bn2(out)
+        out = self.relu(out)
+        out = self.conv3(out)
+        out = self.bn3(out)
+
+        # 通道注意力
+        channel_att = self.channel_att(out)
+        out = out * channel_att
+
+        # 空间注意力
+        spatial_avg = torch.mean(out, dim=1, keepdim=True)
+        spatial_max, _ = torch.max(out, dim=1, keepdim=True)
+        spatial_cat = torch.cat([spatial_avg, spatial_max], dim=1)
+        spatial_att = self.spatial_att(spatial_cat)
+        out = out * spatial_att
+
+        # 残差连接
+        if self.downsample is not None:
+            identity = self.downsample(identity)
+        out += identity
+        out = self.relu(out)
+
+        return out
+
+
+# ----------------------
+# 3. 特征融合模块 (FFM)
+# ----------------------
+class FeatureFusion(nn.Module):
+    def __init__(self, in_channels,num_classes=8):
         super().__init__()
-        self.dim = dim
-        self.num_heads = num_heads
-        self.head_dim = dim // num_heads
-        
-        # Query, Key, Value投影层（共享权重）
-        self.qkv_left = nn.Linear(dim, dim * 3)
-        self.qkv_right = nn.Linear(dim, dim * 3)
-        
-        # 输出投影层
-        self.proj = nn.Linear(dim * 2, dim)
-        
-        # SE Block（通道注意力）
-        self.se = nn.Sequential(
-
-            nn.Linear(dim, dim // 16),  # reduction=16
-            nn.ReLU(),
-            nn.Linear(dim // 16, dim),
-            nn.Sigmoid()
-        )
-
-    def forward(self, x_left, x_right):
-        B = x_left.size(0)
-
-        # 生成左右眼的QKV
-        qkv_l = self.qkv_left(x_left).reshape(B, -1, 3, self.num_heads, self.head_dim).permute(2, 0, 3, 1, 4)
-        q_l, k_l, v_l = qkv_l[0], qkv_l[1], qkv_l[2]  # [B, num_heads, seq_len, head_dim]
-        
-        qkv_r = self.qkv_right(x_right).reshape(B, -1, 3, self.num_heads, self.head_dim).permute(2, 0, 3, 1, 4)
-        q_r, k_r, v_r = qkv_r[0], qkv_r[1], qkv_r[2]
-
-        # 双向注意力计算
-        # 左眼作为Query，右眼作为Key/Value
-        attn_l2r = (q_l @ k_r.transpose(-2, -1)) * (self.head_dim ** -0.5)
-        attn_l2r = F.softmax(attn_l2r, dim=-1)
-        out_l = (attn_l2r @ v_r).transpose(1, 2).reshape(B, -1, self.dim)
-        
-        # 右眼作为Query，左眼作为Key/Value
-        attn_r2l = (q_r @ k_l.transpose(-2, -1)) * (self.head_dim ** -0.5)
-        attn_r2l = F.softmax(attn_r2l, dim=-1)
-        out_r = (attn_r2l @ v_l).transpose(1, 2).reshape(B, -1, self.dim)
-        
-        # 双向结果拼接
-        fused = torch.cat([out_l, out_r], dim=-1)  # [B, seq_len, 2*dim]
-        fused = self.proj(fused)  # 投影回原始维度 [B, seq_len, dim]
-        fused = fused.reshape(B,fused.shape[2])
-        # 添加SE Block（通道注意力）
-        se_weight = self.se(fused)  # [B, dim]
-
-        fused = fused * se_weight  # 通道加权
-        
-        return fused
-
-# 特征融合模块（引入加权融合）
-class FeatureFusionModule(nn.Module):
-    def __init__(self, in_channels, out_channels):
-        super().__init__()
+        # 特征融合（输入通道数为in_channels*2，输出为in_channels）
         self.conv = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),
-            nn.BatchNorm2d(out_channels),
+            nn.Conv2d(in_channels, in_channels * 2, kernel_size=3, padding=1),
+            nn.BatchNorm2d(in_channels * 2),
             nn.ReLU(),
-            nn.Conv2d(out_channels, out_channels, kernel_size=1)
+            nn.Conv2d(in_channels * 2, in_channels, kernel_size=1)
         )
-        self.ffa = FFA(inchannel=in_channels)
+        #self.ffa = FFA(inchannel=in_channels)
         self.alpha = nn.Parameter(torch.tensor(0.5))  # 可学习的融合权重
+    
+        # 分类头（多标签分类使用Sigmoid）
+        self.classifier = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),
+            nn.Flatten(),
+            nn.Dropout(0.5),
+            nn.Linear(in_channels, 1024),
+            nn.Dropout(0.5),
+            nn.ReLU(),
+            nn.Linear(1024, 512),
+            nn.Dropout(0.5),
+            nn.ReLU(),
+            #nn.Sigmoid()  # 多标签分类需要Sigmoid
+        )
+        self.relu = nn.ReLU(inplace=True)
+        self.last = nn.Linear(512,8)
 
     def forward(self, left_feat, right_feat):
-        combined = torch.cat([left_feat, right_feat], dim=1)  # [batch, 4096, H, W]
-        return self.conv(combined) * self.alpha  # 加权融合
+        # 特征拼接（通道维度）
+        fused = torch.cat([left_feat, right_feat], dim=1)
+        fused = self.conv(fused) * self.alpha
+        fused = self.relu(fused)
+        fused = nn.AdaptiveAvgPool2d(1)(fused)
+        fused = nn.Flatten()(fused)
+        #logits = self.classifier(fused)
 
-# 主模型
-class BFPCNet(nn.Module):
+        #logits = self.last(logits)
+        return fused
+
+
+class LabelAwareAttention(nn.Module):
+    def __init__(self, num_classes, feat_dim):
+        super().__init__()
+        self.projection = nn.Linear(feat_dim, num_classes)
+        self.temperature = nn.Parameter(torch.ones(1))
+
+    def forward(self, features):
+        # features: [B, D]
+        # 生成标签注意力权重
+        att = self.projection(features)  # [B, C]
+        att = torch.sigmoid(att / self.temperature)
+        return att.unsqueeze(-1) * features.unsqueeze(1)  # [B, C, D]
+# ----------------------
+# 4. 完整的 BFPC-Net
+# ----------------------
+class BFPCNet1(nn.Module):
     def __init__(self, num_classes=8):
         super().__init__()
-        self.ram_left = ResidualAttentionModule()
-        self.ram_right = ResidualAttentionModule()
-        self.ffm = FeatureFusionModule(4096, 2048)
-        self.classifier = nn.Sequential(
-            nn.Linear(2048, 1024),
-            nn.BatchNorm1d(1024),
-            nn.GELU(),
-            nn.Dropout(0.7),
-            nn.Linear(1024, 512),
-            nn.LayerNorm(512),
-            nn.GELU(),
-            nn.Dropout(0.7),
-            nn.Linear(512, 8)
+        # 修改的ResNet50主干（替换最后一个残差块为RAM）
+        resnet = resnet101(weights=ResNet101_Weights.IMAGENET1K_V2)
+        self.backbone_front = nn.Sequential(
+            *list(resnet.children())[:4],
+
         )
-        
-        self.last = nn.Linear(2048,num_classes)
-        self.fusion = BidirectionalCrossAttention(dim=2048)
-        self.dp = nn.Dropout(0.7)
+        self.backbone_layer1 = nn.Sequential(
 
+            *list(resnet.children())[4],
+
+        )
+        self.backbone_layer2= nn.Sequential(
+
+            *list(resnet.children())[5],  # 取到layer3（输出通道数1024）
+
+        )
+
+
+        self.backbone_layer3= nn.Sequential(
+            #self.tksa,
+            *list(resnet.children())[6:7],  # 取到layer3（输出通道数1024）
+            ResidualAttentionBlock(in_channels=1024, out_channels=256)  # 替换layer4
+        )
+
+        # 特征融合模块 (FFM)
+        self.ffm = FeatureFusion(in_channels=2048, num_classes=num_classes)
+        self.classifier = nn.Sequential(
+            nn.Linear(2048 + 768*2  , 1024),
+            nn.Dropout(0.5),
+            nn.ReLU(),
+            nn.Linear(1024, 512),
+            nn.Dropout(0.5),
+            nn.ReLU(),
+        )
+        self.last = nn.Linear(512,8)
+        #self.labelatt = LabelAwareAttention(num_classes=num_classes, feat_dim=2048)
+        self.vit = ViT(image_size=224,name = 'B_16_imagenet1k',in_channels = 3,num_classes=8,pretrained=False) 
     def forward(self, x):
-        # left_img = x[:,:3,:,:]
-        # right_img = x[:,3:,:,:]
-        # left_feat = self.ram_left(left_img)  # [batch, 2048, 7, 7]
-        # right_feat = self.ram_right(right_img)  # [batch, 2048, 7, 7]
-        # fused_feat = self.ffm(left_feat, right_feat)  # [batch, 2048, 7, 7]
-
-        # pooled = nn.AdaptiveAvgPool2d(1)(fused_feat)  # [batch, 2048, 1, 1]
-        # flattened = pooled.view(pooled.size(0), -1)  # [batch, 2048]
-        # return self.last(self.classifier(flattened))  # [batch, num_classes]
-        left_img = x[:,:3,:,:]
-        right_img = x[:,3:,:,:]
-        
-        left_feat = self.ram_left(left_img)  # [batch, 2048, 7, 7]
-        right_feat = self.ram_right(right_img)  # [batch, 2048, 7, 7]
-          # [batch, 2048, 7, 7]
-        left_feat = self.dp(left_feat)
-        right_feat = self.dp(right_feat)
-        left_pooled = nn.AdaptiveAvgPool2d(1)(left_feat)  # [batch, 2048, 1, 1]
-        left_flattened = left_pooled.view(left_pooled.size(0), -1)  # [batch, 2048]
-        right_pooled = nn.AdaptiveAvgPool2d(1)(right_feat)  # [batch, 2048, 1, 1]
-        right_flattened = right_pooled.view(right_pooled.size(0), -1)  # [batch, 2048]
-        fused_feat = self.fusion.forward(x_left=left_flattened,x_right=right_flattened)
-
-        #flattened = self.classifier(fused_feat)  # [batch, 256]ssifier
- 
-        return self.classifier(fused_feat)  # [batch, num_classes]
+        # 图像增强
+        x = x.to(torch.float32)
+        if len(x.shape) == 3:
+            x = x.unsqueeze(0)
+        left_aug = x[:,:3,:,:]
+        right_aug = x[:,3:,:,:]   
 
 
-class BiometricModel(nn.Module):
-    def __init__(self, img_shape):
-        super(BiometricModel, self).__init__()
+        # 特征提取（输出形状：[batch_size, 1024, 14, 14]）
+        left_feat = self.backbone_front(left_aug)
+        right_feat = self.backbone_front(right_aug)
+        left_feat = self.backbone_layer1(left_feat)
+        right_feat = self.backbone_layer1(right_feat)
+        left_feat = self.backbone_layer2(left_feat)
+        right_feat = self.backbone_layer2(right_feat)
+        left_feat = self.backbone_layer3(left_feat)
+        right_feat = self.backbone_layer3(right_feat)
+        l_vf = self.vit(left_aug)
+        r_vf = self.vit(right_aug)
+        vf = torch.cat([l_vf,r_vf],dim=1)
 
-        # 加载 EfficientNetB3 模型
-        self.left_model = EfficientNet.from_pretrained('efficientnet-b3')
-        self.right_model = EfficientNet.from_pretrained('efficientnet-b3')
-
-        # 去除 EfficientNetB3 中的分类部分 (最后的全连接层)
-        self.left_model._fc = nn.Identity()
-        self.right_model._fc = nn.Identity()
-
-        # Dropout 层
-        self.dropout = nn.Dropout(0.5)
-
-        # 全连接层，注意输入大小要根据 EfficientNetB3 的输出通道数来设置
-        self.fc1 = nn.Linear(2 * self.left_model._conv_head.out_channels, 256)  # EfficientNet 输出通道数 * 2
-        self.fc2 = nn.Linear(256, 128)
-        self.fc3 = nn.Linear(128, 64)
-        self.out = nn.Linear(64, 8)
-
-    def forward(self, x):
-        # 通过左侧和右侧的 EfficientNet 模型进行前向传播
-        left_input = x[:, :3, :, :]
-        right_input = x[:, 3:, :, :]
-        left_features = self.left_model.extract_features(left_input)
-        right_features = self.right_model.extract_features(right_input)
-
-        # 合并左侧和右侧模型的输出
-        x = torch.cat((left_features, right_features), dim=1)  # 在通道维度上合并
-
-        # 应用 Dropout
-        x = self.dropout(x)
-
-        # Global Average Pooling (GAP)
-        x = torch.mean(x, dim=[2, 3])  # 对空间维度（高度和宽度）进行均值池化
-
-        # 通过全连接层
-        x = torch.relu(self.fc1(x))
-        x = torch.relu(self.fc2(x))
-        x = torch.relu(self.fc3(x))
-        out = self.out(x)
-
-        return out
-    
-class simple_resnet(nn.Module):
-    def __init__(self):
-        super(simple_resnet, self).__init__()
-
-        self.resnetleft = resnet50(pretrained=True)
-        self.resnetright = resnet50(pretrained=True)
-        self.resnetleft.fc = nn.Linear(self.resnetleft.fc.in_features, 256)
-        self.resnetright.fc = nn.Linear(self.resnetright.fc.in_features, 256)
-        self.classfier = nn.Linear(512, 8)
-    def forward(self, x):
-        left_input = x[:, :3, :, :]
-        right_input = x[:, 3:, :, :]
-        left_features = self.resnetleft(left_input)
-        right_features = self.resnetright(right_input)
-        x = torch.cat((left_features, right_features), dim=1)
-        out = self.classfier(x)
-        return out
+        # 特征融合与分类
+        logits = self.ffm(left_feat, right_feat)
+        logits = torch.cat([vf,logits],dim=1)
+        logits = self.classifier(logits)
+        logits = self.last(logits)
+        return logits
 
 if __name__ == "__main__":
-    # 测试模型
-    model = simple_resnet()
-    dummy_input = torch.randn(8,6,224,224)
-    label = torch.randn(8,8)  
-    output = model(dummy_input)
-    print("Output shape:", output.shape)  # 应输出 (4, 8)
+    x = torch.randn(4,6,224,224)
+    model = BFPCNet1(num_classes=8)
+    print(model(x).shape)

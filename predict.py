@@ -1,10 +1,10 @@
-from model import ViTModel
+
 import torch
 import os
 from data_preprocessing import PreprocessAndCache_for_single
 import numpy as np
 import zipfile
-
+from model import BFPCNet1
 one_hot = {
     "N":0,
     "D":1,
@@ -30,10 +30,10 @@ one_hot_to_name = {
 class Predict:
     def __init__(self,model_path,device,visualize=False):
         #模型还没搞好，这部分可以先不用看
-        #self.model = ViTModel(num_classes=8)
-        #self.model.load_state_dict(torch.load(model_path))
-        #self.model.to(device)
-        #self.model.eval()
+        self.model = BFPCNet1(num_classes=8)
+        self.model.load_state_dict(torch.load(model_path),strict=False)
+        self.model.to(device)
+        self.model.eval()
         self.device = device
 
         self.visualize = visualize
@@ -51,13 +51,16 @@ class Predict:
             process = PreprocessAndCache_for_single(left_img,right_img,cache_dir="./temp_cache")
             single_data = np.load(f"./temp_cache/{left_img_name}_{right_img_name}.npz")
             data = single_data["img"]
-            data = torch.tensor(data).to(self.device)
+            data = torch.tensor(data).to(self.device).permute(2,0,1)
             #现在模型还没搞好，先随机输出一个矩阵
-            #labels = self.model(data)
-            labels = torch.rand(8)
+            labels = self.model(data)
+            #labels = torch.rand(8)
+            labels = labels.squeeze(0)
+            print(labels)
             labels = (labels > 0.5).float()
+            print(labels)
             for i in range(8):
-                if labels[i] > 0.5:
+                if labels[i] == 1:
                     answers.append(one_hot_to_name[str(i)])
             return answers
         
@@ -115,10 +118,10 @@ class Predict:
 
 
 if __name__ == "__main__":
-    p = Predict("./models/model_vit_1.pth",device="cpu")
-    ans = p.predict("./Temp/0_left.jpg","./Temp/0_right.jpg")
-    ans2 = p.predict(imgs="hhh.zip",mode="batch")
+    p = Predict("F:\-_--main/final_model_state_dict.pth",device="cpu")
+    ans = p.predict("./hhh/403_left.jpg","./hhh/403_right.jpg")
+    #ans2 = p.predict(imgs="hhh.zip",mode="batch")
     print(ans)
-    print(ans2)
+    #print(ans2)
 
 

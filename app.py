@@ -9,7 +9,7 @@ app = Flask(__name__, static_folder='./frontend/dist')
 CORS(app)  # Enable CORS on all routes
 
 # 初始化 Predict 类
-model_path = "./models/model_vit_1.pth"
+model_path = "./final_model_state_dict.pth"
 predictor = Predict(model_path, device="cpu")
 
 @app.route('/predict', methods=['POST'])
