@@ -3,15 +3,52 @@ import torch.nn as nn
 from torchvision import models
 from torchvision.models import resnet50, ResNet50_Weights,resnet101,ResNet101_Weights
 from vit_model import ViT
-from vit_pytorch import ViT as V
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from efficientnet_pytorch import EfficientNet
+import models_vit
+from timm import create_model
+class EnhancedSemanticAttentionModule(nn.Module):
+    def __init__(self, global_dim, local_dim, num_heads=8):
+        super(EnhancedSemanticAttentionModule, self).__init__()
+        self.global_dim = global_dim
+        self.local_dim = local_dim
+        self.num_heads = num_heads
+
+        # 使用线性层匹配维度
+        self.adjust_global_dim = nn.Linear(global_dim, local_dim)
+        self.adjust_local_dim = nn.Linear(local_dim, global_dim)
+
+        # Cross-Attention layers
+        self.global_to_local_attention = nn.MultiheadAttention(local_dim, num_heads)
+        self.local_to_global_attention = nn.MultiheadAttention(global_dim, num_heads)
+
+        # Self-Attention layer for the concatenated features
+        self.self_attention = nn.MultiheadAttention(global_dim + local_dim, num_heads)
+
+        # Optional: Layer normalization
+        self.layer_norm = nn.LayerNorm(global_dim + local_dim)
+
+    def forward(self, global_features, local_features):
 
 
+        # 调整全局和局部特征的维度
+        adjusted_global_features = self.adjust_global_dim(global_features)
+        adjusted_local_features = self.adjust_local_dim(local_features)
+
+        # Cross-attention operations
+        global_to_local_attn, _ = self.global_to_local_attention(local_features, adjusted_global_features, adjusted_global_features)
+        local_to_global_attn, _ = self.local_to_global_attention(global_features, adjusted_local_features, adjusted_local_features)
+
+        # Concatenate the cross-attention outputs
+        concatenated_features = torch.cat((global_to_local_attn, local_to_global_attn), dim=-1)
+
+        # Self-attention to enhance the features further
+        enhanced_features, _ = self.self_attention(concatenated_features, concatenated_features, concatenated_features)
+
+        # Optional: Layer normalization
+        enhanced_features = self.layer_norm(enhanced_features)
 
 
+        return enhanced_features
+    
 class ResidualAttentionBlock(nn.Module):
     def __init__(self, in_channels, out_channels, reduction=16):
         super().__init__()
@@ -117,10 +154,10 @@ class FeatureFusion(nn.Module):
         self.relu = nn.ReLU(inplace=True)
         self.last = nn.Linear(512,8)
 
-    def forward(self, left_feat, right_feat):
+    def forward(self, left_feat):
         # 特征拼接（通道维度）
-        fused = torch.cat([left_feat, right_feat], dim=1)
-        fused = self.conv(fused) * self.alpha
+
+        fused = self.conv(left_feat) * self.alpha
         fused = self.relu(fused)
         fused = nn.AdaptiveAvgPool2d(1)(fused)
         fused = nn.Flatten()(fused)
@@ -142,14 +179,39 @@ class LabelAwareAttention(nn.Module):
         att = self.projection(features)  # [B, C]
         att = torch.sigmoid(att / self.temperature)
         return att.unsqueeze(-1) * features.unsqueeze(1)  # [B, C, D]
-# ----------------------
-# 4. 完整的 BFPC-Net
-# ----------------------
+class GatedFusion(nn.Module):
+    def __init__(self, text_dim, img_dim, hidden_dim):
+        super().__init__()
+        # 门控信号生成网络
+        self.gate_net = nn.Sequential(
+            nn.Linear(1024, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, 1),
+            nn.Sigmoid()  # 输出[0,1]间的门控值
+        )
+        # 特征维度对齐（可选）
+        self.text_proj = nn.Linear(text_dim, 512)
+        self.img_proj = nn.Linear(img_dim, 512)
+
+    def forward(self, text_feats, img_feats):
+        # 对齐特征维度（假设最终统一为img_dim）
+        text_proj = self.text_proj(text_feats)  # [batch, img_dim]
+        img_proj = self.img_proj(img_feats)      # [batch, img_dim]
+        
+        # 拼接特征生成门控值
+        combined = torch.cat([text_proj, img_proj], dim=1)  # [batch, text_dim + img_dim]
+        gate = self.gate_net(combined)  # [batch, 1]
+        
+        # 加权融合
+        fused_feats = gate * text_proj + (1 - gate) * img_proj
+        return fused_feats
+    
 class BFPCNet1(nn.Module):
     def __init__(self, num_classes=8):
         super().__init__()
         # 修改的ResNet50主干（替换最后一个残差块为RAM）
-        resnet = resnet101(weights=ResNet101_Weights.IMAGENET1K_V2)
+
+        resnet = resnet101(weights = ResNet101_Weights.IMAGENET1K_V2)
         self.backbone_front = nn.Sequential(
             *list(resnet.children())[:4],
 
@@ -173,48 +235,60 @@ class BFPCNet1(nn.Module):
         )
 
         # 特征融合模块 (FFM)
-        self.ffm = FeatureFusion(in_channels=2048, num_classes=num_classes)
+        self.ffm = FeatureFusion(in_channels=1024, num_classes=num_classes)
         self.classifier = nn.Sequential(
-            nn.Linear(2048 + 768*2  , 1024),
+            nn.Linear(512 , 256),
             nn.Dropout(0.5),
             nn.ReLU(),
-            nn.Linear(1024, 512),
+            nn.Linear(256, 128),
             nn.Dropout(0.5),
             nn.ReLU(),
         )
-        self.last = nn.Linear(512,8)
+        #self.classifier = KAN([2048+768*2, 1024, 512])
+        self.last = nn.Linear(128,8)
+        self.gated = GatedFusion(768,1024+768,512)
         #self.labelatt = LabelAwareAttention(num_classes=num_classes, feat_dim=2048)
-        self.vit = ViT(image_size=224,name = 'B_16_imagenet1k',in_channels = 3,num_classes=8,pretrained=False) 
-    def forward(self, x):
+        self.l_att = EnhancedSemanticAttentionModule(global_dim=768, local_dim=768, num_heads=8
+                                                     )
+        self.r_att = EnhancedSemanticAttentionModule(global_dim=768, local_dim=768, num_heads=8
+                                                     )
+        self.vit = ViT(image_size=(224,448),name = 'B_16_imagenet1k',in_channels = 3,num_classes=8,pretrained=False) 
+    def forward(self, x,texts):
         # 图像增强
-        x = x.to(torch.float32)
-        if len(x.shape) == 3:
-            x = x.unsqueeze(0)
-        left_aug = x[:,:3,:,:]
-        right_aug = x[:,3:,:,:]   
 
 
-        # 特征提取（输出形状：[batch_size, 1024, 14, 14]）
-        left_feat = self.backbone_front(left_aug)
-        right_feat = self.backbone_front(right_aug)
+        left_feat = self.backbone_front(x)
+
         left_feat = self.backbone_layer1(left_feat)
-        right_feat = self.backbone_layer1(right_feat)
+
         left_feat = self.backbone_layer2(left_feat)
-        right_feat = self.backbone_layer2(right_feat)
+
         left_feat = self.backbone_layer3(left_feat)
-        right_feat = self.backbone_layer3(right_feat)
-        l_vf = self.vit(left_aug)
-        r_vf = self.vit(right_aug)
-        vf = torch.cat([l_vf,r_vf],dim=1)
+        left_feat = self.ffm(left_feat)
+        #print(left_feat.shape)
+
+        l_vf = self.vit(x)
+
 
         # 特征融合与分类
-        logits = self.ffm(left_feat, right_feat)
-        logits = torch.cat([vf,logits],dim=1)
+        logits = torch.cat([l_vf,left_feat],dim=1) 
+        logits = self.gated(texts,logits)
         logits = self.classifier(logits)
         logits = self.last(logits)
         return logits
 
+
+
+
+
+
 if __name__ == "__main__":
-    x = torch.randn(4,6,224,224)
+    x = torch.randn(4,3,224,448)
+    text = torch.randn(4,768)
     model = BFPCNet1(num_classes=8)
-    print(model(x).shape)
+    print(model(x,text).shape)
+    # 测试
+    # model = SwinFeatureExtractor()
+    # x = torch.randn(1, 3, 224, 448)  # 示例输入
+    # features = model(x)
+    # print(features.shape)  # (B, N, C) 或 (B, C, H', W')
