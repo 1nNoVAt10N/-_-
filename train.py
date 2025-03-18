@@ -1,4 +1,4 @@
-from model import BFPCNet1
+from model_with_gate import BFPCNet1
 from data_utils import EyeDataset
 from data_preprocessing import PreprocessAndCache
 from torch.utils.data import DataLoader
@@ -81,7 +81,7 @@ class train_val_test:
                 #print(targets)
                 self.optimizer.zero_grad()
 
-                outputs = self.model(inputs,texts)
+                outputs = self.model(inputs)
                 loss = self.criterion(outputs, targets)
                 loss.backward()
                 self.optimizer.step()
@@ -110,7 +110,7 @@ class train_val_test:
         with torch.no_grad():
             for data, texts,target in tqdm.tqdm(val_dataloader,desc = "val"):
                 data, texts,target = data.to(self.device), texts.to(self.device),target.to(self.device)
-                output = self.model(data,texts)
+                output = self.model(data)
                 
                 loss = self.criterion(output, target)
                 val_loss += loss.item()

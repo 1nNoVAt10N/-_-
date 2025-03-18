@@ -1,10 +1,9 @@
-
 import torch
 import os
 from data_preprocessing import PreprocessAndCache_for_single
 import numpy as np
 import zipfile
-from model import BFPCNet1
+from model_with_gate import BFPCNet1
 import pandas as pd
 import albumentations as A
 from transformers import AutoTokenizer, AutoModel
@@ -49,7 +48,14 @@ class Predict:
         self.transform = get_augmentations2()
         self.visualize = visualize
 
-
+    def extract_images_from_zip(self, zip_path, extract_dir):
+        """从压缩包中提取图像文件"""
+        os.makedirs(extract_dir, exist_ok=True)
+        
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(extract_dir)
+        
+        return extract_dir
 
     def predict(self, left_img=None, right_img=None, texts=None, imgs=None, xlxs=None, mode="single"):
         answers = []
@@ -65,13 +71,18 @@ class Predict:
 
                 single_data = np.load(cache_path)
                 data = single_data["img"]
-                data = torch.tensor(data).to(self.device).permute(2, 0, 1)
+                l = data[:, :224, :]
+                r = data[:, 224:, :]
+                au = self.transform(image=l, right=r)
+                data = np.concatenate((au['image'], au['right']), axis=1)
+                
+                data = torch.tensor(data).to(self.device).permute(2, 0, 1).float()
+                data = data.unsqueeze(0)
+                
                 with torch.no_grad():
                     labels = self.model(data)
                 labels = labels.squeeze(0)
-                print(labels)
                 labels = (labels > 0.5).float()
-                print(labels)
 
                 for i in range(8):
                     if labels[i] == 1:
@@ -83,13 +94,19 @@ class Predict:
                 if xlxs is None:
                     raise ValueError("信息表路径不能为空")
                 
+                # 如果imgs是压缩包，先提取图像
+                if imgs.endswith('.zip'):
+                    extract_dir = "./temp_images"
+                    imgs = self.extract_images_from_zip(imgs, extract_dir)
+                
                 # 读取信息表
                 df = pd.read_excel(xlxs)
                 batch_results = {}
 
                 for _, row in df.iterrows():
-                    left_img_path = os.path.join(imgs, row['Left-Funds'])
-                    right_img_path = os.path.join(imgs, row['Right-Funds'])
+                    patient_id = row.get('ID', '')
+                    left_img_path = os.path.join(imgs, row['Left-Fundus'])
+                    right_img_path = os.path.join(imgs, row['Right-Fundus'])
 
                     if os.path.exists(left_img_path) and os.path.exists(right_img_path):
                         left_img_name = os.path.splitext(os.path.basename(left_img_path))[0]
@@ -100,20 +117,25 @@ class Predict:
 
                         single_data = np.load(cache_path)
                         data = single_data["img"]
-                        data = torch.tensor(data).to(self.device)
+                        l = data[:, :224, :]
+                        r = data[:, 224:, :]
+                        au = self.transform(image=l, right=r)
+                        data = np.concatenate((au['image'], au['right']), axis=1)
+                        
+                        data = torch.tensor(data).to(self.device).permute(2, 0, 1).float()
+                        data = data.unsqueeze(0)
 
-                        labels = self.model(data)
+                        with torch.no_grad():
+                            labels = self.model(data)
+                        labels = labels.squeeze(0)
                         labels = (labels > 0.5).float()
 
-                        img_file_name = f"{left_img_name}_left_right"
-
-                        if img_file_name in batch_results:
-                            continue
+                        result_key = patient_id if (patient_id != None)else f"{left_img_name}_{right_img_name}"
                         
-                        batch_results[img_file_name] = []
+                        batch_results[result_key] = []
                         for i in range(8):
-                            if labels[i] > 0.5:
-                                batch_results[img_file_name].append(one_hot_to_name[str(i)])
+                            if labels[i] == 1:
+                                batch_results[result_key].append(one_hot_to_name[str(i)])
 
                 return batch_results
         
@@ -146,61 +168,125 @@ class Predict:
                 data = data.unsqueeze(0)
                 labels = self.model(data, text_embedding)
                 labels = labels.squeeze(0)
-                print(labels)
                 labels = (labels > 0.5).float()
-                print(labels)
 
                 for i in range(8):
                     if labels[i] == 1:
                         answers.append(one_hot_to_name[str(i)])
 
                 return answers
+            
+            elif mode == "batch":
+                if xlxs is None:
+                    raise ValueError("信息表路径不能为空")
+                
+                # 如果imgs是压缩包，先提取图像
+                if imgs.endswith('.zip'):
+                    extract_dir = "./temp_images"
+                    imgs = self.extract_images_from_zip(imgs, extract_dir)
+                
+                # 读取信息表
+                df = pd.read_excel(xlxs)
+                batch_results = {}
 
+                for _, row in df.iterrows():
+                    patient_id = row.get('ID', '')
+                    left_img_path = os.path.join(imgs, row['Left-Fundus'])
+                    right_img_path = os.path.join(imgs, row['Right-Fundus'])
+                    
+                    # 获取诊断关键词
+                    left_keywords = str(row['Left-Diagnostic Keywords'])
+                    right_keywords = str(row['Right-Diagnostic Keywords'])
+                    
+                    text = {
+                        "left_text": left_keywords,
+                        "right_text": right_keywords
+                    }
 
+                    if os.path.exists(left_img_path) and os.path.exists(right_img_path):
+                        left_img_name = os.path.splitext(os.path.basename(left_img_path))[0]
+                        right_img_name = os.path.splitext(os.path.basename(right_img_path))[0]
 
+                        process = PreprocessAndCache_for_single(left_img_path, right_img_path, cache_dir="./temp_cache", text=text)
+                        cache_path = f"./temp_cache/{left_img_name}_{right_img_name}.npz"
+
+                        single_data = np.load(cache_path)
+                        data = single_data["img"]
+                        l = data[:, :224, :]
+                        r = data[:, 224:, :]
+                        au = self.transform(image=l, right=r)
+                        data = np.concatenate((au['image'], au['right']), axis=1)
+                        
+                        texts = str(single_data["left_keywords"]) + "," + str(single_data["right_keywords"])
+                        
+                        inputs = self.tokenizer(texts, return_tensors="pt")
+                        with torch.no_grad():
+                            outputs = self.bertmodel(**inputs)
+                            last_hidden_state = outputs.last_hidden_state
+                            cls_embedding = last_hidden_state[:, 0, :]
+                            text_embedding = cls_embedding
+                        
+                        data = torch.tensor(data).to(self.device).permute(2, 0, 1).float()
+                        data = data.unsqueeze(0)
+                        
+                        labels = self.model(data, text_embedding)
+                        labels = labels.squeeze(0)
+                        labels = (labels > 0.5).float()
+                        
+                        result_key = patient_id if (patient_id != None) else f"{left_img_name}_{right_img_name}"
+                        
+                        batch_results[result_key] = []
+                        for i in range(8):
+                            if labels[i] == 1:
+                                batch_results[result_key].append(one_hot_to_name[str(i)])
+                
+                return batch_results
 
 
 if __name__ == "__main__":
-    annotation_path = r"F:\BFPC/real_full/Off-site Test Set\Annotation/off-site test annotation (English).xlsx"
-    image_folder = r"F:\BFPC/real_full/Off-site Test Set/Images"  # 存储图像的文件夹
-    output_csv = r"F:\BFPC/real_full/Off-site Test Set/predictions.csv"  # 输出的 CSV 文件路径
+    # annotation_path = r"F:\BFPC/real_full/Off-site Test Set\Annotation/off-site test annotation (English).xlsx"
+    # image_folder = r"F:\BFPC/real_full/Off-site Test Set/Images"  # 存储图像的文件夹
+    # output_csv = r"F:\BFPC/real_full/Off-site Test Set/predictions.csv"  # 输出的 CSV 文件路径
 
-    # 加载预测模型
+    # # 加载预测模型
+    # p = Predict("F:\BFPC/final_model_state_dict_with_gate.pth", device="cpu")
+
+    # # 读取 Excel 文件
+    # df = pd.read_excel(annotation_path)
+
+    # # 结果存储列表
+    # results = []
+
+    # # 遍历所有行进行预测
+    # for _, row in df.iterrows():
+    #     left_img_path = os.path.join(image_folder, row["Left-Fundus"])
+    #     right_img_path = os.path.join(image_folder, row["Right-Fundus"])
+
+    #     # 确保图像文件存在
+    #     if not os.path.exists(left_img_path) or not os.path.exists(right_img_path):
+    #         print(f"警告：未找到图像 {left_img_path} 或 {right_img_path}，跳过...")
+    #         continue
+
+    #     # 构造文本输入
+    #     text = {
+    #         "left_text": str(row["Left-Diagnostic Keywords"]),
+    #         "right_text": str(row["Right-Diagnostic Keywords"])
+    #     }
+
+    #     # 进行预测
+    #     predictions = p.predict(left_img_path, right_img_path, texts=text)
+
+    #     # 存储结果
+    #     results.append([row["ID"]] + [1 if one_hot_to_name[str(i)] in predictions else 0 for i in range(8)])
+
+    # # 创建 DataFrame 并保存为 CSV
+    # columns = ["ID"] + list(one_hot_to_name.values())  # 列名
+    # df_results = pd.DataFrame(results, columns=columns)
+    # df_results.to_csv(output_csv, index=False, encoding="utf-8")
+
+    # print(f"预测完成，结果已保存至 {output_csv}")
+    
     p = Predict("F:\BFPC/final_model_state_dict_with_gate.pth", device="cpu")
-
-    # 读取 Excel 文件
-    df = pd.read_excel(annotation_path)
-
-    # 结果存储列表
-    results = []
-
-    # 遍历所有行进行预测
-    for _, row in df.iterrows():
-        left_img_path = os.path.join(image_folder, row["Left-Fundus"])
-        right_img_path = os.path.join(image_folder, row["Right-Fundus"])
-
-        # 确保图像文件存在
-        if not os.path.exists(left_img_path) or not os.path.exists(right_img_path):
-            print(f"警告：未找到图像 {left_img_path} 或 {right_img_path}，跳过...")
-            continue
-
-        # 构造文本输入
-        text = {
-            "left_text": str(row["Left-Diagnostic Keywords"]),
-            "right_text": str(row["Right-Diagnostic Keywords"])
-        }
-
-        # 进行预测
-        predictions = p.predict(left_img_path, right_img_path, texts=text)
-
-        # 存储结果
-        results.append([row["ID"]] + [1 if one_hot_to_name[str(i)] in predictions else 0 for i in range(8)])
-
-    # 创建 DataFrame 并保存为 CSV
-    columns = ["ID"] + list(one_hot_to_name.values())  # 列名
-    df_results = pd.DataFrame(results, columns=columns)
-    df_results.to_csv(output_csv, index=False, encoding="utf-8")
-
-    print(f"预测完成，结果已保存至 {output_csv}")
-
+    res = p.predict(imgs="F:\BFPC\ceshi\ceshi.zip",xlxs="F:\BFPC\ceshi\ceshi.xlsx",texts=True,mode="batch")
+    print(res)
 

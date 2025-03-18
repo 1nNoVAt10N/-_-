@@ -4,7 +4,7 @@ import torch
 from model_without_bert import BFPCNet1
 from data_utils import EyeDataset
 from train import FocalLoss
-from model import BFPCNet1 as hhh
+from model_without_bert import BFPCNet1 as hhh
 
 import numpy as np
 # from vit_pytorch import ViT as V
