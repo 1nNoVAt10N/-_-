@@ -1,7 +1,7 @@
 temp_cache/
 
 .venv/
-
+final_model_state_dict_with_gate.pth
 __pycache__/
 *.pyc
 *.pyo
