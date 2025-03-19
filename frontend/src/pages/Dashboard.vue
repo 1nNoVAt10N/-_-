@@ -78,7 +78,9 @@ const diagnosisStats = ref([
 ])
 
 // 导航到特定页面
+
 const navigateTo = (route: any) => {
+
 
   router.push(route)
 }
