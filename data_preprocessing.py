@@ -3,9 +3,7 @@ import cv2
 import numpy as np
 import tqdm
 import matplotlib.pyplot as plt
-from ietk import methods
-from ietk import util
-from ietk.data import IDRiD
+
 #one-hot表示多标签
 import os
 # OpenCV实现MSR

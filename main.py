@@ -9,7 +9,7 @@ from model_without_bert import BFPCNet1 as hhh
 import numpy as np
 # from vit_pytorch import ViT as V
 # from main_model import HiFuse_Small as create_model
-import models_vit
+
 
 if __name__ == "__main__":
 
