@@ -3,7 +3,7 @@ import torch.nn as nn
 from torchvision import models
 from torchvision.models import resnet50, ResNet50_Weights,resnet101,ResNet101_Weights
 from vit_model import ViT
-import models_vit
+
 from timm import create_model
 class EnhancedSemanticAttentionModule(nn.Module):
     def __init__(self, global_dim, local_dim, num_heads=8):
