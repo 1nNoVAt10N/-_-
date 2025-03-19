@@ -1,34 +1,36 @@
 <script setup lang="ts">
-  import { zhCN, dateZhCN, useOsTheme, darkTheme, lightTheme } from 'naive-ui';
+import { zhCN, dateZhCN, useOsTheme, darkTheme, lightTheme } from 'naive-ui';
+import { ref, computed, watchEffect, provide } from 'vue';
+import Sidebar from './components/Sidebar.vue';
 
-  const osThemeRef = useOsTheme();
-  const isDarkMode = ref(osThemeRef.value === 'dark');
+const osThemeRef = useOsTheme();
+const isDarkMode = ref(osThemeRef.value === 'dark');
 
-  const theme = computed(() => {
-    return isDarkMode.value ? darkTheme : lightTheme;
-  });
+const theme = computed(() => {
+  return isDarkMode.value ? darkTheme : lightTheme;
+});
 
-  watchEffect(() => {
-    if (isDarkMode.value) {
-      document.documentElement.style.setProperty(
-        '--background-color',
-        'var(--background-color-dark)',
-      );
-    } else {
-      document.documentElement.style.setProperty(
-        '--background-color',
-        'var(--background-color-light)',
-      );
-    }
-  });
+watchEffect(() => {
+  if (isDarkMode.value) {
+    document.documentElement.style.setProperty(
+      '--background-color',
+      'var(--background-color-dark)',
+    );
+  } else {
+    document.documentElement.style.setProperty(
+      '--background-color',
+      'var(--background-color-light)',
+    );
+  }
+});
 
-  const switchDarkMode = () => {
-    isDarkMode.value = !isDarkMode.value;
-    document.documentElement.classList.toggle('dark', isDarkMode.value);
-  };
+const switchDarkMode = () => {
+  isDarkMode.value = !isDarkMode.value;
+  document.documentElement.classList.toggle('dark', isDarkMode.value);
+};
 
-  provide('isDarkMode', isDarkMode);
-  provide('switchDarkMode', switchDarkMode);
+provide('isDarkMode', isDarkMode);
+provide('switchDarkMode', switchDarkMode);
 </script>
 
 <template>
@@ -38,10 +40,15 @@
         <NMessageProvider>
           <NNotificationProvider>
             <NLayout content-style="min-height: 100vh">
-              <Header />
-              <NLayoutContent>
-                <router-view />
-              </NLayoutContent>
+              <NLayout has-sider position="absolute">
+                <Sidebar />
+                <NLayout>
+                  <Header />
+                  <NLayoutContent>
+                    <router-view />
+                  </NLayoutContent>
+                </NLayout>
+              </NLayout>
             </NLayout>
           </NNotificationProvider>
         </NMessageProvider>
@@ -51,8 +58,18 @@
 </template>
 
 <style scoped>
-  body {
-    background-color: var(--background-color);
-    transition: background-color 0.3s ease;
-  }
+body {
+  background-color: var(--background-color);
+  transition: background-color 0.3s ease;
+  margin: 0;
+  padding: 0;
+}
+
+:deep(.n-layout) {
+  position: relative;
+}
+
+:deep(.n-layout-scroll-container) {
+  position: relative;
+}
 </style>

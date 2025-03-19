@@ -15,6 +15,7 @@
   "dependencies": {
     "@lylajs/web": "^1.12.0",
     "@vicons/carbon": "^0.13.0",
+    "@vicons/ionicons5": "^0.13.0",
     "@vicons/material": "^0.13.0",
     "@vicons/tabler": "^0.12.0",
     "naive-ui": "^2.38.2",

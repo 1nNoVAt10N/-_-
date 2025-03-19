@@ -6,12 +6,19 @@ import Homepage from './pages/Homepage.vue';
 import NotFound from './pages/NotFound.vue';
 import Recognition from './pages/Recognition.vue';
 import Recognition1 from './pages/Recognition1.vue';
+import Diagnosis from './pages/Diagnosis.vue';
+import DiagnosisDetail from './pages/DiagnosisDetail.vue';
+import Dashboard from './pages/Dashboard.vue';
+
 
 // Set up the routes
 const routes = [
   { path: '/', component: Homepage },
+  { path: '/dashboard', component: Dashboard },
   { path: '/singleRecognition', component: Recognition },
-  { path: '/multiRecognition', component: Recognition1},
+  { path: '/multiRecognition', component: Recognition1 },
+  { path: '/diagnosis', component: Diagnosis },
+  { path: '/diagnosis/:id', component: DiagnosisDetail },
   { path: '/:pathMatch(.*)*', component: NotFound },
 ];
 
