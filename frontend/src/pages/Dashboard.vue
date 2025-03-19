@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { RouteLocationRaw, useRouter } from 'vue-router'
 import {
   EyeOutline,
   MedicalOutline,
@@ -78,7 +78,9 @@ const diagnosisStats = ref([
 ])
 
 // 导航到特定页面
-const navigateTo = (route:any) => {
+
+const navigateTo = (route: any) => {
+
   router.push(route)
 }
 

@@ -9,11 +9,11 @@ import Recognition1 from './pages/Recognition1.vue';
 import Diagnosis from './pages/Diagnosis.vue';
 import DiagnosisDetail from './pages/DiagnosisDetail.vue';
 import Dashboard from './pages/Dashboard.vue';
-
+import Login from './pages/Login.vue';
 
 // Set up the routes
 const routes = [
-  { path: '/', component: Homepage },
+  { path: '/', component: Login },
   { path: '/dashboard', component: Dashboard },
   { path: '/singleRecognition', component: Recognition },
   { path: '/multiRecognition', component: Recognition1 },
