@@ -15,18 +15,10 @@
   };
 
   // 将 Abstract 内容定义为变量
-  const abstractContent = `Abstract
-Retinal disorders are a major cause of irreversible vision loss, which can be mitigated through accurate and early diagnosis. 
-Conventionally, fundus images are used as the gold diagnosis standard in detecting retinal diseases. In recent years, more and 
-more researchers have employed deep learning methods for diagnosing ophthalmic diseases using fundus photography datasets. 
-Among the studies, most of them focus on diagnosing a single disease in fundus images, making it still challenging for the 
-diagnosis of multiple diseases. In this paper, we propose a framework that combines ResNet and Transformer for multi-label 
-classification of retinal disease. This model employs ResNet to extract image features, utilizes Transformer to capture global 
-information, and enhances the relationships between categories through learnable label embedding. On the publicly available 
-Ocular Disease Intelligent Recognition (ODIR-5 k) dataset, the proposed method achieves a mean average precision of 92.86%, 
-an area under the curve (AUC) of 97.27%, and a recall of 90.62%, which outperforms other state-of-the-art approaches for the 
-multi-label classification. The proposed method represents a significant advancement in the field of retinal disease diagnosis, 
-offering a more accurate, efficient, and comprehensive model for the detection of multiple retinal conditions.`;
+  const abstractContent = `
+眼科疾病如今已成为紧追肿瘤和心脑血管疾病之后，对人类健康及生存质量构成严重威胁的第三大疾病类型。随着全球人口老龄化进程的加速，眼科疾病的患病人数呈现出显著的上升趋势。与此同时，在我国，医疗资源分布不均衡的状况较为突出。高水平医院集中了大量优质医疗资源，吸引众多患者前往就诊，这使得这些医院的眼科医生不得不花费大量时间和精力处理常见眼科疾病，工作任务愈发繁重。在此情况下，医师漏判、误诊的情况时有发生，诊断效率低下，且专业眼科人员短缺的问题日益凸显。仅依靠人类视觉系统去仔细观察眼底图像来精准发现病症，并维持较高的正确诊断率，在实际操作中难度极大。因此，开发一款高效、精准的眼科疾病智能诊断系统迫在眉睫，这将有效缓解当前医疗体系在眼科疾病诊断方面面临的诸多问题。
+然而，眼科疾病的诊断面临着诸多挑战。一方面，眼科疾病种类繁多，不同疾病的症状和表现形式复杂多样，给准确诊断带来了困难。另一方面，眼底图像的解读需要专业的知识和经验，且图像质量受到多种因素的影响，进一步增加了诊断的难度。此外，传统的诊断方法主要依赖医生的主观判断，缺乏客观的量化指标，容易导致误诊和漏诊。`
+;
 </script>
 
 <template>
@@ -89,42 +81,39 @@ offering a more accurate, efficient, and comprehensive model for the detection o
         <n-text class="text-gray-600">{{ abstractContent }}</n-text>
       </div>
     </div>
-
+<!-- 左侧参考文献 -->
+      <div >
+        <n-text class="text-xl font-bold mb-4">参考文献</n-text>
+        <ul class="list-disc pl-5 space-y-2">
+<li>[1]Lee, Jinhyuk et al. “BioBERT: a pre-trained biomedical language representation model for biomedical text mining.” Bioinformatics 36 (2019): 1234 - 1240. </li>
+<li>[2]Dosovitskiy, Alexey et al. “An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale.” ArXiv abs/2010.11929 (2020): n. pag.
+</li>
+<li>[3]He, Kaiming et al. “Deep Residual Learning for Image Recognition.” 2016 IEEE Conference on Computer Vision and Pattern Recognition (CVPR) (2015): 770-778.
+</li>
+<li>[4]R. Prawira, A. Bustamam and P. Anki, "Multi Label Classification Of Retinal Disease On Fundus Images Using AlexNet And VGG16 Architectures," 2021 4th International Seminar on Research of Information Technology and Intelligent Systems (ISRITI), Yogyakarta, Indonesia, 2021, pp. 464-468, doi: 10.1109/ISRITI54043.2021.9702817.
+</li>
+<li>[5]Li, Z., Xu, M., Yang, X., & Han, Y. (2022). Multi-Label Fundus Image Classification Using Attention Mechanisms and Feature Fusion. Micromachines, 13(6), 947. https://doi.org/10.3390/mi13060947
+</li>
+        </ul>
+      </div>
     <!-- 分隔线 -->
     <div class="w-full border-t border-gray-200"></div>
 
     <!-- 第三层 Box -->
     <div class="flex justify-between">
-      <!-- 左侧参考文献 -->
-      <div class="w-1/3">
-        <n-text class="text-xl font-bold mb-4">参考文献</n-text>
-        <ul class="list-disc pl-5 space-y-2">
-          <li>论文引用 1</li>
-          <li>论文引用 2</li>
-          <li>论文引用 3</li>
-        </ul>
-      </div>
       
       <!-- 中间团队成员 -->
-      <div class="w-1/3 flex flex-col items-center">
-        <n-text class="text-xl font-bold mb-4">团队成员</n-text>
-        <div class="flex flex-col space-y-1">
-          <div class="flex justify-center space-x-4">
-            <div>陈非洋</div>
-            <div>袁天博</div>
-          </div>
-          <div class="flex justify-center space-x-4">
-            <div>翁笑阳</div>
-            <div>高佳烨</div>
-          </div>
-          <div class="flex justify-start">
-            <div>姜星宇</div>
-          </div>
+<div class="w-1/2">
+  <n-text class="text-xl font-bold mb-4">团队成员</n-text>
+  <div class="text-left">
+          <div>陈非洋 袁天博</div>
+          <div>翁笑阳 高佳烨</div>
+          <div>姜星宇</div>
         </div>
-      </div>
+</div>
       
       <!-- 右侧学校信息 -->
-      <div class="w-1/3 flex flex-col items-end">
+      <div class="w-1/2 flex flex-col items-end">
         <n-text class="text-xl font-bold mb-4">苏州大学计算机科学与技术学院</n-text>
         <div class="text-right">
           <div>联系方式：0512-65113107</div>
