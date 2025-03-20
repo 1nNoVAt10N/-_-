@@ -8,6 +8,7 @@ from data_preprocessing import PreprocessAndCache_for_single
 import matplotlib.pyplot as plt
 import base64
 from io import BytesIO
+from cut_blend import cut_blend
 app = Flask(__name__, static_folder='./frontend/dist')
 CORS(app)  # Enable CORS on all routes
 
@@ -43,12 +44,37 @@ def predict():
     img_right_buffer = BytesIO()
     plt.imsave(img_right_buffer, img_right, format='jpg')
     img_right_base64 = base64.b64encode(img_right_buffer.getvalue()).decode('utf-8')
+    img_left_x1,img_left_x2 = cut_blend("./"+left_eye_file_path)
+    img_right_y1,img_right_y2 = cut_blend("./"+right_eye_file_path)
+    # 将图像保存为 JPG 文件并转换为Base64编码
+    img_left_x1_buffer = BytesIO()
+    plt.imsave(img_left_x1_buffer, img_left_x1, format='jpg')
+    img_left_x1_base64 = base64.b64encode(img_left_x1_buffer.getvalue()).decode('utf-8')
+
+    img_left_x2_buffer = BytesIO()
+    plt.imsave(img_left_x2_buffer, img_left_x2, format='jpg')
+    img_left_x2_base64 = base64.b64encode(img_left_x2_buffer.getvalue()).decode('utf-8')
+
+    img_right_y1_buffer = BytesIO()
+    plt.imsave(img_right_y1_buffer, img_right_y1, format='jpg')
+    img_right_y1_base64 = base64.b64encode(img_right_y1_buffer.getvalue()).decode('utf-8')
+
+
+    img_right_y2_buffer = BytesIO()
+    plt.imsave(img_right_y2_buffer, img_right_y2, format='jpg')
+    img_right_y2_base64 = base64.b64encode(img_right_y2_buffer.getvalue()).decode('utf-8')
+
     os.remove(left_eye_file_path)
     os.remove(right_eye_file_path)
+
     print(left_eye_file_path, right_eye_file_path)
     return jsonify({
         'left_eye_image': img_left_base64,
         'right_eye_image': img_right_base64,
+        'left_eye_x1': img_left_x1_base64,
+        'left_eye_x2': img_left_x2_base64,
+        'right_eye_y1': img_right_y1_base64,
+        'right_eye_y2': img_right_y2_base64,
         'result': ""
     }), 200
 

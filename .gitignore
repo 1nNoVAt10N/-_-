@@ -2,6 +2,7 @@ temp_cache/
 
 .venv/
 final_model_state_dict_with_gate.pth
+best_model_state_dict_with_gate.pth
 biobert_model/
 temp/
 5K/

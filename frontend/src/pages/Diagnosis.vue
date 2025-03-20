@@ -124,6 +124,10 @@ const checkAnalyzeButton = () => {
 }
 const left_eye = ref("")
 const right_eye = ref("")
+const left_eye_x1 = ref("")
+const left_eye_x2 = ref("")
+const right_eye_y1 = ref("")
+const right_eye_y2 = ref("")
 // 分析处理
 const startAnalysis = async () => {
     if (!leftFile.value || !rightFile.value) return
@@ -167,6 +171,10 @@ const startAnalysis = async () => {
         }
         left_eye.value = "data:image/jpeg;base64,"+json['left_eye_image']
         right_eye.value = "data:image/jpeg;base64,"+json['right_eye_image']
+        left_eye_x1.value = "data:image/jpeg;base64,"+json['left_eye_x1']
+        left_eye_x2.value = "data:image/jpeg;base64,"+json['left_eye_x2']
+        right_eye_y1.value = "data:image/jpeg;base64,"+json['right_eye_y1']
+        right_eye_y2.value = "data:image/jpeg;base64,"+json['right_eye_y2']
         console.log('检测结果:', json); 
         
         detectionCard.value.results = results
@@ -352,14 +360,40 @@ const viewDetailReport = () => {
                             </h2>
                             <div class="eye-sections">
                                 <div class="preview-area">
-                                <div v-if="!leftPreviewVisible" class="preview-placeholder">右眼图像预览区域</div>
+                                <div v-if="!leftPreviewVisible" class="preview-placeholder">左眼眼底预处理图像预览区域</div>
                                     <NImage v-if="leftPreviewVisible" :src="left_eye" class="preview-image show"
                                         alt="左眼眼底预处理图像预览" preview-disabled />
                                 </div>
                                 <div class="preview-area">
-                                <div v-if="!rightPreviewVisible" class="preview-placeholder">右眼图像预览区域</div>
+                                <div v-if="!rightPreviewVisible" class="preview-placeholder">右眼眼底预处理图像预览区域</div>
                                     <NImage v-if="rightPreviewVisible" :src="right_eye" class="preview-image show"
                                         alt="右眼眼底预处理图像预览" preview-disabled />
+                                    
+                                </div>
+                            </div>
+                            <div class="eye-sections">
+                                <div class="preview-area">
+                                <div v-if="!leftPreviewVisible" class="preview-placeholder">左眼眼底预处理图像预览区域1</div>
+                                    <NImage v-if="leftPreviewVisible" :src="left_eye_x1" class="preview-image show"
+                                        alt="左眼眼底预处理图像预览1" preview-disabled />
+                                </div>
+                                <div class="preview-area">
+                                <div v-if="!rightPreviewVisible" class="preview-placeholder">右眼眼底预处理图像预览区域1</div>
+                                    <NImage v-if="rightPreviewVisible" :src="right_eye_y1" class="preview-image show"
+                                        alt="右眼眼底预处理图像预览1" preview-disabled />
+                                    
+                                </div>
+                            </div>
+                            <div class="eye-sections">
+                                <div class="preview-area">
+                                <div v-if="!leftPreviewVisible" class="preview-placeholder">左眼眼底预处理图像预览区域2</div>
+                                    <NImage v-if="leftPreviewVisible" :src="left_eye_x2" class="preview-image show"
+                                        alt="左眼眼底预处理图像预览2" preview-disabled />
+                                </div>
+                                <div class="preview-area">
+                                <div v-if="!rightPreviewVisible" class="preview-placeholder">右眼眼底预处理图像预览区域2</div>
+                                    <NImage v-if="rightPreviewVisible" :src="right_eye_y2" class="preview-image show"
+                                        alt="右眼眼底预处理图像预览2" preview-disabled />
                                     
                                 </div>
                             </div>
@@ -454,6 +488,7 @@ const viewDetailReport = () => {
 .eye-sections {
     display: flex;
     gap: 20px;
+    justify-content: space-between
 }
 
 .eye-section {
