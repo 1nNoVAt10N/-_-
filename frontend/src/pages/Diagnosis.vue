@@ -11,7 +11,8 @@ import {
     EyeOutline,
     CalendarOutline,
     WarningOutline,
-    CheckmarkCircleOutline
+    CheckmarkCircleOutline,
+    ImageOutline,
 } from '@vicons/ionicons5'
 import { NIcon, NCard, NButton, NSpin, NUpload, NImage, NTag, NProgress } from 'naive-ui'
 
@@ -121,7 +122,8 @@ const handleRightFileUpload = (event: any) => {
 const checkAnalyzeButton = () => {
     analyzeBtn.value = leftFile.value && rightFile.value
 }
-
+const left_eye = ref("")
+const right_eye = ref("")
 // 分析处理
 const startAnalysis = async () => {
     if (!leftFile.value || !rightFile.value) return
@@ -163,6 +165,10 @@ const startAnalysis = async () => {
                 })
             }
         }
+        left_eye.value = "data:image/jpeg;base64,"+json['left_eye_image']
+        right_eye.value = "data:image/jpeg;base64,"+json['right_eye_image']
+        console.log('检测结果:', json); 
+        
         detectionCard.value.results = results
 
         // 更新诊断卡片状态
@@ -338,6 +344,25 @@ const viewDetailReport = () => {
                             {{ detectionCard.status === 'waiting' ? '请先上传眼底图像并点击"开始分析"按钮' : '正在分析中，请稍候...' }}
                         </p>
                         <div v-if="detectionCard.status === 'completed'" class="result-container">
+                            <h2 class="section-title">
+                                <NIcon size="20" class="mr-2">
+                                    <ImageOutline />
+                                </NIcon>
+                                预处理图像
+                            </h2>
+                            <div class="eye-sections">
+                                <div class="preview-area">
+                                <div v-if="!leftPreviewVisible" class="preview-placeholder">右眼图像预览区域</div>
+                                    <NImage v-if="leftPreviewVisible" :src="left_eye" class="preview-image show"
+                                        alt="左眼眼底预处理图像预览" preview-disabled />
+                                </div>
+                                <div class="preview-area">
+                                <div v-if="!rightPreviewVisible" class="preview-placeholder">右眼图像预览区域</div>
+                                    <NImage v-if="rightPreviewVisible" :src="right_eye" class="preview-image show"
+                                        alt="右眼眼底预处理图像预览" preview-disabled />
+                                    
+                                </div>
+                            </div>
                             <div v-for="(result, index) in detectionCard.results" :key="index" class="result-item">
                                 <div class="result-label">{{ result.name }}:</div>
                                 <div class="result-value"
@@ -354,7 +379,9 @@ const viewDetailReport = () => {
                         </p>
                     </div>
                 </NCard>
+                <!-- 预处理结果 -->
                 <NCard :class="{ inactive: !diagnosisCard.isActive }" class="analysis-card">
+
                 </NCard>
                 <!-- 分析按钮 -->
                 <NButton type="primary" size="large" block :disabled="!analyzeBtn || isAnalyzing"
