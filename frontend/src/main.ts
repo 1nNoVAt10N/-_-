@@ -13,7 +13,8 @@ import Login from './pages/Login.vue';
 
 // Set up the routes
 const routes = [
-  { path: '/', component: Login },
+  { path: '/', component: Homepage },
+  { path: '/login', component: Login },
   { path: '/dashboard', component: Dashboard },
   { path: '/singleRecognition', component: Recognition },
   { path: '/multiRecognition', component: Recognition1 },

@@ -2,7 +2,13 @@
 import { zhCN, dateZhCN, useOsTheme, darkTheme, lightTheme } from 'naive-ui';
 import { ref, computed, watchEffect, provide } from 'vue';
 import Sidebar from './components/Sidebar.vue';
+import Login from './pages/Login.vue';
 
+const showLogin = ref(true);
+
+const handleLoginSuccess = () => {
+  showLogin.value = false;
+};
 const osThemeRef = useOsTheme();
 const isDarkMode = ref(osThemeRef.value === 'dark');
 
@@ -46,6 +52,7 @@ provide('switchDarkMode', switchDarkMode);
                   <Header />
                   <NLayoutContent>
                     <router-view />
+                    <Login v-if="showLogin" @loginSuccess="handleLoginSuccess" />
                   </NLayoutContent>
                 </NLayout>
               </NLayout>
