@@ -39,8 +39,7 @@ class Predict:
     def __init__(self,model_path,device,visualize=False):
         #模型还没搞好，这部分可以先不用看
         self.model = BFPCNet1(num_classes=8)
-        map_location = torch.device('cpu') if device == "cpu" else None
-        self.model.load_state_dict(torch.load(model_path, map_location=map_location), strict=False)
+        self.model.load_state_dict(torch.load(model_path),strict=False)
         self.model.to(device)
         self.model.eval()
         self.device = device
@@ -288,6 +287,9 @@ if __name__ == "__main__":
     # print(f"预测完成，结果已保存至 {output_csv}")
     
     p = Predict("F:\BFPC/final_model_state_dict_with_gate.pth", device="cpu")
-    res = p.predict(imgs="F:\BFPC\ceshi\ceshi.zip",xlxs="F:\BFPC\ceshi\ceshi.xlsx",texts=True,mode="batch")
+    res = p.predict(left_img="F:\BFPC\cropped_#Training_Dataset/1_left.jpg",right_img="F:\BFPC\cropped_#Training_Dataset/1_right.jpg",texts={
+        "left_text":"dwifqo",
+        "right_text":"fewfw"
+    },mode="single")
     print(res)
 
