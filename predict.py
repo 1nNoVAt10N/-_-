@@ -39,7 +39,8 @@ class Predict:
     def __init__(self,model_path,device,visualize=False):
         #模型还没搞好，这部分可以先不用看
         self.model = BFPCNet1(num_classes=8)
-        self.model.load_state_dict(torch.load(model_path),strict=False)
+        map_location = torch.device('cpu') if device == "cpu" else None
+        self.model.load_state_dict(torch.load(model_path, map_location=map_location), strict=False)
         self.model.to(device)
         self.model.eval()
         self.device = device
