@@ -145,7 +145,7 @@ const startAnalysis = async () => {
     try {
         const formData = new FormData()
         formData.append('left_eye', leftFile.value instanceof Blob ? leftFile.value : "")
-        formData.append('right_eye',  rightFile.value instanceof Blob ? rightFile.value : "")
+        formData.append('right_eye', rightFile.value instanceof Blob ? rightFile.value : "")
 
         const { json } = await lyla.post('http://localhost:5000/predict', {
             body: formData,
@@ -169,14 +169,14 @@ const startAnalysis = async () => {
                 })
             }
         }
-        left_eye.value = "data:image/jpeg;base64,"+json['left_eye_image']
-        right_eye.value = "data:image/jpeg;base64,"+json['right_eye_image']
-        left_eye_x1.value = "data:image/jpeg;base64,"+json['left_eye_x1']
-        left_eye_x2.value = "data:image/jpeg;base64,"+json['left_eye_x2']
-        right_eye_y1.value = "data:image/jpeg;base64,"+json['right_eye_y1']
-        right_eye_y2.value = "data:image/jpeg;base64,"+json['right_eye_y2']
-        console.log('检测结果:', json); 
-        
+        left_eye.value = "data:image/jpeg;base64," + json['left_eye_image']
+        right_eye.value = "data:image/jpeg;base64," + json['right_eye_image']
+        left_eye_x1.value = "data:image/jpeg;base64," + json['left_eye_x1']
+        left_eye_x2.value = "data:image/jpeg;base64," + json['left_eye_x2']
+        right_eye_y1.value = "data:image/jpeg;base64," + json['right_eye_y1']
+        right_eye_y2.value = "data:image/jpeg;base64," + json['right_eye_y2']
+        console.log('检测结果:', json);
+
         detectionCard.value.results = results
 
         // 更新诊断卡片状态
@@ -270,7 +270,7 @@ const viewDetailReport = () => {
         <div class="diagnosis-container">
             <!-- 左侧上传和预览区域 -->
             <div class="upload-section">
-                <h2 class="section-title">
+                <h2 v-if="detectionCard.status !== 'completed'" class="section-title">
                     <NIcon size="20" class="mr-2">
                         <CloudUploadOutline />
                     </NIcon>
@@ -278,9 +278,9 @@ const viewDetailReport = () => {
                 </h2>
                 <div class="eye-sections">
                     <!-- 左眼上传区域 -->
-                    <div class="eye-section">
+                    <div  class="eye-section">
                         <h3 class="eye-title">左眼图像</h3>
-                        <div class="upload-area left" @click="leftFileInput?.click()"
+                        <div v-if="detectionCard.status !== 'completed'" class="upload-area left" @click="leftFileInput?.click()"
                             @dragover="(e) => handleDragOver(e, 'left')" @dragleave="() => handleDragLeave('left')"
                             @drop="(e) => handleDrop(e, 'left')">
                             <div class="upload-icon">
@@ -303,8 +303,8 @@ const viewDetailReport = () => {
                     </div>
                     <!-- 右眼上传区域 -->
                     <div class="eye-section">
-                        <h3 class="eye-title">右眼图像</h3>
-                        <div class="upload-area right" @click="rightFileInput?.click()"
+                        <h3  class="eye-title">右眼图像</h3>
+                        <div v-if="detectionCard.status !== 'completed'" class="upload-area right" @click="rightFileInput?.click()"
                             @dragover="(e) => handleDragOver(e, 'right')" @dragleave="() => handleDragLeave('right')"
                             @drop="(e) => handleDrop(e, 'right')">
                             <div class="upload-icon">
@@ -323,6 +323,53 @@ const viewDetailReport = () => {
                             <div v-if="!rightPreviewVisible" class="preview-placeholder">右眼图像预览区域</div>
                             <NImage v-if="rightPreviewVisible" :src="rightPreviewImage" class="preview-image show"
                                 alt="右眼眼底图像预览" preview-disabled />
+                        </div>
+                    </div>
+                </div>
+                <div v-if="detectionCard.status === 'completed'" class="result-container">
+                    <h2 class="section-title">
+                        <NIcon size="20" class="mr-2">
+                            <ImageOutline />
+                        </NIcon>
+                        预处理图像
+                    </h2>
+                    <div class="eye-sections">
+                        <div class="preview-area">
+                            <div v-if="!leftPreviewVisible" class="preview-placeholder">左眼眼底预处理图像预览区域</div>
+                            <NImage v-if="leftPreviewVisible" :src="left_eye" class="preview-image show"
+                                alt="左眼眼底预处理图像预览" preview-disabled />
+                        </div>
+                        <div class="preview-area">
+                            <div v-if="!rightPreviewVisible" class="preview-placeholder">右眼眼底预处理图像预览区域</div>
+                            <NImage v-if="rightPreviewVisible" :src="right_eye" class="preview-image show"
+                                alt="右眼眼底预处理图像预览" preview-disabled />
+
+                        </div>
+                    </div>
+                    <div class="eye-sections">
+                        <div class="preview-area">
+                            <div v-if="!leftPreviewVisible" class="preview-placeholder">左眼眼底预处理图像预览区域1</div>
+                            <NImage v-if="leftPreviewVisible" :src="left_eye_x1" class="preview-image show"
+                                alt="左眼眼底预处理图像预览1" preview-disabled />
+                        </div>
+                        <div class="preview-area">
+                            <div v-if="!rightPreviewVisible" class="preview-placeholder">右眼眼底预处理图像预览区域1</div>
+                            <NImage v-if="rightPreviewVisible" :src="right_eye_y1" class="preview-image show"
+                                alt="右眼眼底预处理图像预览1" preview-disabled />
+
+                        </div>
+                    </div>
+                    <div class="eye-sections">
+                        <div class="preview-area">
+                            <div v-if="!leftPreviewVisible" class="preview-placeholder">左眼眼底预处理图像预览区域2</div>
+                            <NImage v-if="leftPreviewVisible" :src="left_eye_x2" class="preview-image show"
+                                alt="左眼眼底预处理图像预览2" preview-disabled />
+                        </div>
+                        <div class="preview-area">
+                            <div v-if="!rightPreviewVisible" class="preview-placeholder">右眼眼底预处理图像预览区域2</div>
+                            <NImage v-if="rightPreviewVisible" :src="right_eye_y2" class="preview-image show"
+                                alt="右眼眼底预处理图像预览2" preview-disabled />
+
                         </div>
                     </div>
                 </div>
@@ -352,51 +399,6 @@ const viewDetailReport = () => {
                             {{ detectionCard.status === 'waiting' ? '请先上传眼底图像并点击"开始分析"按钮' : '正在分析中，请稍候...' }}
                         </p>
                         <div v-if="detectionCard.status === 'completed'" class="result-container">
-                            <h2 class="section-title">
-                                <NIcon size="20" class="mr-2">
-                                    <ImageOutline />
-                                </NIcon>
-                                预处理图像
-                            </h2>
-                            <div class="eye-sections">
-                                <div class="preview-area">
-                                <div v-if="!leftPreviewVisible" class="preview-placeholder">左眼眼底预处理图像预览区域</div>
-                                    <NImage v-if="leftPreviewVisible" :src="left_eye" class="preview-image show"
-                                        alt="左眼眼底预处理图像预览" preview-disabled />
-                                </div>
-                                <div class="preview-area">
-                                <div v-if="!rightPreviewVisible" class="preview-placeholder">右眼眼底预处理图像预览区域</div>
-                                    <NImage v-if="rightPreviewVisible" :src="right_eye" class="preview-image show"
-                                        alt="右眼眼底预处理图像预览" preview-disabled />
-                                    
-                                </div>
-                            </div>
-                            <div class="eye-sections">
-                                <div class="preview-area">
-                                <div v-if="!leftPreviewVisible" class="preview-placeholder">左眼眼底预处理图像预览区域1</div>
-                                    <NImage v-if="leftPreviewVisible" :src="left_eye_x1" class="preview-image show"
-                                        alt="左眼眼底预处理图像预览1" preview-disabled />
-                                </div>
-                                <div class="preview-area">
-                                <div v-if="!rightPreviewVisible" class="preview-placeholder">右眼眼底预处理图像预览区域1</div>
-                                    <NImage v-if="rightPreviewVisible" :src="right_eye_y1" class="preview-image show"
-                                        alt="右眼眼底预处理图像预览1" preview-disabled />
-                                    
-                                </div>
-                            </div>
-                            <div class="eye-sections">
-                                <div class="preview-area">
-                                <div v-if="!leftPreviewVisible" class="preview-placeholder">左眼眼底预处理图像预览区域2</div>
-                                    <NImage v-if="leftPreviewVisible" :src="left_eye_x2" class="preview-image show"
-                                        alt="左眼眼底预处理图像预览2" preview-disabled />
-                                </div>
-                                <div class="preview-area">
-                                <div v-if="!rightPreviewVisible" class="preview-placeholder">右眼眼底预处理图像预览区域2</div>
-                                    <NImage v-if="rightPreviewVisible" :src="right_eye_y2" class="preview-image show"
-                                        alt="右眼眼底预处理图像预览2" preview-disabled />
-                                    
-                                </div>
-                            </div>
                             <div v-for="(result, index) in detectionCard.results" :key="index" class="result-item">
                                 <div class="result-label">{{ result.name }}:</div>
                                 <div class="result-value"
