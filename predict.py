@@ -5,9 +5,12 @@ import numpy as np
 import zipfile
 from model_with_gate import BFPCNet1
 import pandas as pd
+from doubao import get_book
 import albumentations as A
 from transformers import AutoTokenizer, AutoModel
 from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
+import mysql.connector
+from sql_APIs import *
 mean = IMAGENET_DEFAULT_MEAN
 std = IMAGENET_DEFAULT_STD
 one_hot = {
@@ -31,6 +34,9 @@ one_hot_to_name = {
     "6":"近视",
     "7":"其他疾病/异常 ",
 }
+
+
+
 def get_augmentations2():
     return A.Compose([
         A.Normalize(mean, std),
@@ -48,6 +54,7 @@ class Predict:
         self.bertmodel = AutoModel.from_pretrained("./biobert_model/") 
         self.transform = get_augmentations2()
         self.visualize = visualize
+        self.user_id = 1
 
     def extract_images_from_zip(self, zip_path, extract_dir):
         """从压缩包中提取图像文件"""
@@ -58,7 +65,17 @@ class Predict:
         
         return extract_dir
 
-    def predict(self, left_img=None, right_img=None, texts=None, imgs=None, xlxs=None, mode="single"):
+    def predict(self, 
+                left_img=None,
+                right_img=None,
+                texts=None,
+                patient_id=None,
+                patrint_name="张三",
+                patiend_gender=None,
+                patiend_age=None, 
+                imgs=None, 
+                xlxs=None, 
+                mode="single"):
         answers = []
         
         if texts is None:  # 处理无文本情况
@@ -144,7 +161,10 @@ class Predict:
             if mode == "single":
                 left_img_name = os.path.splitext(os.path.basename(left_img))[0]
                 right_img_name = os.path.splitext(os.path.basename(right_img))[0]
-
+                #print(left_img)
+                save_left_img = read_image_file(left_img)
+                save_right_img = read_image_file(right_img)
+                #print(save_left_img)
                 process = PreprocessAndCache_for_single(left_img, right_img, cache_dir="./temp_cache",text=texts)
                 cache_path = f"./temp_cache/{left_img_name}_{right_img_name}.npz"
 
@@ -156,9 +176,9 @@ class Predict:
                 data = np.concatenate((au['image'],au['right']), axis=1)
 
  
-                texts = str(single_data["left_keywords"]) + "," + str(single_data["right_keywords"])
+                texts_ori = str(single_data["left_keywords"]) + "," + str(single_data["right_keywords"])
 
-                inputs = self.tokenizer(texts, return_tensors="pt")
+                inputs = self.tokenizer(texts_ori, return_tensors="pt")
                 with torch.no_grad():
                     outputs = self.bertmodel(**inputs)
                     last_hidden_state = outputs.last_hidden_state  # shape: (batch_size, seq_len, hidden_dim)
@@ -175,7 +195,35 @@ class Predict:
                     if labels[i] == 1:
                         answers.append(one_hot_to_name[str(i)])
 
-                return answers
+                ans_str = ""
+
+                for i in answers:
+                    ans_str += i +','
+
+                advise = get_book(
+                    patient_name=patrint_name,
+                    patient_age=patiend_age,
+                    patient_sex=patiend_gender,
+                    patient_disease=ans_str,
+
+                )
+
+                save_results(
+                    patient_id=patient_id,
+                    patient_name=patrint_name,
+                    patient_age=patiend_age,
+                    patient_sex=patiend_gender,
+                    predict_result=ans_str,
+                    advise=advise,
+                    fund_id = None,
+                    left_fund_keyword=texts["left_text"],
+                    right_fund_keyword=texts["right_text"],
+                    left_fund=save_left_img,
+                    right_fund=save_right_img,
+           
+                )
+
+                return ans_str,advise
             
             elif mode == "batch":
                 if xlxs is None:
@@ -287,7 +335,26 @@ if __name__ == "__main__":
 
     # print(f"预测完成，结果已保存至 {output_csv}")
     
+    # p = Predict("F:\BFPC/final_model_state_dict_with_gate.pth", device="cpu")
+    # res = p.predict(imgs="F:\BFPC\ceshi\ceshi.zip",xlxs="F:\BFPC\ceshi\ceshi.xlsx",texts=True,mode="batch")
+    # print(res)
+    import os
+
+    path = "./biobert_model/"
+    print("Path exists:", os.path.exists(path))
+    print("Contents:", os.listdir(path) if os.path.exists(path) else "Directory not found")
+
     p = Predict("F:\BFPC/final_model_state_dict_with_gate.pth", device="cpu")
-    res = p.predict(imgs="F:\BFPC\ceshi\ceshi.zip",xlxs="F:\BFPC\ceshi\ceshi.xlsx",texts=True,mode="batch")
+    res = p.predict(left_img="F:\BFPC\cropped_#Training_Dataset/0_left.jpg",right_img="F:\BFPC\cropped_#Training_Dataset/0_right.jpg",
+                    texts={
+                        'left_text':"wrwr",
+                        "right_text":"fwfefwe",
+                    },
+                    patiend_age=23,
+                    patiend_gender="Male",
+                    patrint_name="张三",
+                    mode="single"
+                    )
+
     print(res)
 
