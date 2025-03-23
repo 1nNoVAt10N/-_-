@@ -129,7 +129,7 @@ const navigateTo = (item:any) => {
 }
 
 .nav-menu {
-  margin-top: 20px;
+  /* margin-top: 20px; */
   list-style-type: none;
   padding: 0;
   flex: 1;
