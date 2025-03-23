@@ -36,14 +36,6 @@ def predict():
     pre=PreprocessAndCache_for_single(left_img="./"+left_eye_file_path, right_img="./"+right_eye_file_path,pre=True)
     img_left = pre.preprocess_img("./" + left_eye_file_path)
     img_right = pre.preprocess_img("./" + right_eye_file_path)
-    # 将图像保存为 JPG 文件并转换为Base64编码
-    img_left_buffer = BytesIO()
-    plt.imsave(img_left_buffer, img_left, format='jpg')
-    img_left_base64 = base64.b64encode(img_left_buffer.getvalue()).decode('utf-8')
-
-    img_right_buffer = BytesIO()
-    plt.imsave(img_right_buffer, img_right, format='jpg')
-    img_right_base64 = base64.b64encode(img_right_buffer.getvalue()).decode('utf-8')
     img_left_x1,img_left_x2 = cut_blend("./"+left_eye_file_path)
     img_right_y1,img_right_y2 = cut_blend("./"+right_eye_file_path)
     # 将图像保存为 JPG 文件并转换为Base64编码
@@ -63,19 +55,26 @@ def predict():
     img_right_y2_buffer = BytesIO()
     plt.imsave(img_right_y2_buffer, img_right_y2, format='jpg')
     img_right_y2_base64 = base64.b64encode(img_right_y2_buffer.getvalue()).decode('utf-8')
+    result = predictor.predict(left_img="./"+left_eye_file_path, right_img="./"+right_eye_file_path,texts={
+        "left_text": "左眼",
+        "right_text": "右眼"
+    }, mode="single")
 
+    merged = pre.merge_double_imgs("./" + left_eye_file_path, "./" + right_eye_file_path)
+    merged_buffer = BytesIO()
+    plt.imsave(merged_buffer, merged, format='jpg')
+    merged_base64 = base64.b64encode(merged_buffer.getvalue()).decode('utf-8')
     os.remove(left_eye_file_path)
     os.remove(right_eye_file_path)
 
     print(left_eye_file_path, right_eye_file_path)
     return jsonify({
-        'left_eye_image': img_left_base64,
-        'right_eye_image': img_right_base64,
+        'merged_base64': merged_base64,
         'left_eye_x1': img_left_x1_base64,
         'left_eye_x2': img_left_x2_base64,
         'right_eye_y1': img_right_y1_base64,
         'right_eye_y2': img_right_y2_base64,
-        'result': ""
+        'result': result
     }), 200
 
     # try:
