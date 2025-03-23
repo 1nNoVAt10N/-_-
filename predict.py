@@ -283,10 +283,51 @@ class Predict:
                         
                         result_key = patient_id if (patient_id != None) else f"{left_img_name}_{right_img_name}"
                         
-                        batch_results[result_key] = []
+                        # 收集预测结果
+                        prediction_results = []
                         for i in range(8):
                             if labels[i] == 1:
-                                batch_results[result_key].append(one_hot_to_name[str(i)])
+                                prediction_results.append(one_hot_to_name[str(i)])
+                        
+                        # 构建预测结果字符串
+                        ans_str = ",".join(prediction_results)
+                        
+                        # 获取患者信息
+                        patient_name = "张三"
+                        patient_age = row.get('Patient Age', None)
+                        patient_gender = row.get('Patient Sex', None)
+                        
+                        # 生成建议
+                        advise = get_book(
+                            patient_name=patient_name,
+                            patient_age=patient_age,
+                            patient_sex=patient_gender,
+                            patient_disease=ans_str,
+                        )
+                        
+                        # 保存结果到数据库
+                        save_left_img = read_image_file(left_img_path)
+                        save_right_img = read_image_file(right_img_path)
+                        
+                        record_id, fund_id = save_results(
+                            patient_id=patient_id,
+                            patient_name=patient_name,
+                            patient_age=patient_age,
+                            patient_sex=patient_gender,
+                            predict_result=ans_str,
+                            advise=advise,
+                            fund_id=None,
+                            left_fund_keyword=left_keywords,
+                            right_fund_keyword=right_keywords,
+                            left_fund=save_left_img,
+                            right_fund=save_right_img,
+                        )
+                        
+                        batch_results[result_key] = {
+                            'predictions': prediction_results,
+                            'record_id': record_id,
+                            'fund_id': fund_id
+                        }
                 
                 return batch_results
 
@@ -334,26 +375,27 @@ if __name__ == "__main__":
 
     # print(f"预测完成，结果已保存至 {output_csv}")
     
-    # p = Predict("F:\BFPC/final_model_state_dict_with_gate.pth", device="cpu")
-    # res = p.predict(imgs="F:\BFPC\ceshi\ceshi.zip",xlxs="F:\BFPC\ceshi\ceshi.xlsx",texts=True,mode="batch")
-    # print(res)
-    import os
-
-    path = "./biobert_model/"
-    print("Path exists:", os.path.exists(path))
-    print("Contents:", os.listdir(path) if os.path.exists(path) else "Directory not found")
-
     p = Predict("F:\BFPC/final_model_state_dict_with_gate.pth", device="cpu")
-    res = p.predict(left_img="F:\BFPC\cropped_#Training_Dataset/0_left.jpg",right_img="F:\BFPC\cropped_#Training_Dataset/0_right.jpg",
-                    texts={
-                        'left_text':"wrwr",
-                        "right_text":"fwfefwe",
-                    },
-                    patiend_age=23,
-                    patiend_gender="Male",
-                    patrint_name="张三",
-                    mode="single"
-                    )
-
+    res = p.predict(imgs="F:\BFPC\ceshi\ceshi.zip",xlxs="F:\BFPC\ceshi\ceshi.xlsx",texts=True,mode="batch")
     print(res)
+    # import os
+
+    # path = "./biobert_model/"
+    # print("Path exists:", os.path.exists(path))
+    # print("Contents:", os.listdir(path) if os.path.exists(path) else "Directory not found")
+
+    # p = Predict("F:\BFPC/final_model_state_dict_with_gate.pth", device="cpu")
+    # res = p.predict(left_img="F:\BFPC\cropped_#Training_Dataset/0_left.jpg",right_img="F:\BFPC\cropped_#Training_Dataset/0_right.jpg",
+    #                 texts={
+    #                     'left_text':"wrwr",
+    #                     "right_text":"fwfefwe",
+    #                 },
+    #                 patiend_age=23,
+    #                 patiend_gender="Male",
+    #                 patrint_name="张三",
+    #                 mode="single",
+    #                 patient_id=1,
+    #                 )
+
+    # print(res)
 
