@@ -122,12 +122,14 @@ const handleRightFileUpload = (event: any) => {
 const checkAnalyzeButton = () => {
     analyzeBtn.value = leftFile.value && rightFile.value
 }
-const left_eye = ref("")
-const right_eye = ref("")
+const merged = ref("")
 const left_eye_x1 = ref("")
 const left_eye_x2 = ref("")
 const right_eye_y1 = ref("")
 const right_eye_y2 = ref("")
+
+// 医生备注
+const doctorNotes = ref('')
 // 分析处理
 const startAnalysis = async () => {
     if (!leftFile.value || !rightFile.value) return
@@ -163,14 +165,13 @@ const startAnalysis = async () => {
         for (const [key, value] of Object.entries(json)) {
             if (Array.isArray(value)) {
                 results.push({
-                    name: key,
+                    name: value[0],
                     isPositive: value[0] !== '正常',
                     confidence: 90 // 这里可以根据实际情况设置置信度
                 })
             }
         }
-        left_eye.value = "data:image/jpeg;base64," + json['left_eye_image']
-        right_eye.value = "data:image/jpeg;base64," + json['right_eye_image']
+        merged.value = "data:image/jpeg;base64," + json['merged_base64']
         left_eye_x1.value = "data:image/jpeg;base64," + json['left_eye_x1']
         left_eye_x2.value = "data:image/jpeg;base64," + json['left_eye_x2']
         right_eye_y1.value = "data:image/jpeg;base64," + json['right_eye_y1']
@@ -300,6 +301,26 @@ const viewDetailReport = () => {
                             <NImage v-if="leftPreviewVisible" :src="leftPreviewImage" class="preview-image show"
                                 alt="左眼眼底图像预览" preview-disabled />
                         </div>
+                        <NCard class="notes-card">
+                            <template #header>
+                            <div class="card-header">
+                                <div class="card-title">
+                                <NIcon size="20" class="mr-2">
+                                    <CheckmarkCircleOutline />
+                                </NIcon>
+                                医生备注
+                                </div>
+                            </div>
+                            </template>
+                            <div class="notes-content">
+                            <textarea
+                                v-model="doctorNotes"
+                                class="notes-textarea"
+                                placeholder="请输入医生备注..."
+                                rows="4"
+                            ></textarea>
+                            </div>
+                        </NCard>
                     </div>
                     <!-- 右眼上传区域 -->
                     <div class="eye-section">
@@ -325,54 +346,50 @@ const viewDetailReport = () => {
                                 alt="右眼眼底图像预览" preview-disabled />
                         </div>
                     </div>
+
                 </div>
-                <div v-if="detectionCard.status === 'completed'" class="result-container">
-                    <h2 class="section-title">
-                        <NIcon size="20" class="mr-2">
-                            <ImageOutline />
-                        </NIcon>
-                        预处理图像
-                    </h2>
-                    <div class="eye-sections">
-                        <div class="preview-area">
-                            <div v-if="!leftPreviewVisible" class="preview-placeholder">左眼眼底预处理图像预览区域</div>
-                            <NImage v-if="leftPreviewVisible" :src="left_eye" class="preview-image show"
-                                alt="左眼眼底预处理图像预览" preview-disabled />
-                        </div>
-                        <div class="preview-area">
-                            <div v-if="!rightPreviewVisible" class="preview-placeholder">右眼眼底预处理图像预览区域</div>
-                            <NImage v-if="rightPreviewVisible" :src="right_eye" class="preview-image show"
-                                alt="右眼眼底预处理图像预览" preview-disabled />
+                    <NCard v-if="detectionCard.status === 'completed'" class="analysis-card">
+                        <h2 class="section-title">
+                            <NIcon size="20" class="mr-2">
+                                <ImageOutline />
+                            </NIcon>
+                            预处理图像
+                        </h2>
+                        <div class="eye-sections">
+                            <div class="preview-area">
+                                <div v-if="!leftPreviewVisible" class="preview-placeholder">左眼眼底预处理图像预览区域1</div>
+                                <NImage v-if="leftPreviewVisible" :src="left_eye_x1" class="preview-image show"
+                                    alt="左眼眼底预处理图像预览1" preview-disabled />
+                            </div>
+                            <div class="preview-area">
+                                <div v-if="!rightPreviewVisible" class="preview-placeholder">右眼眼底预处理图像预览区域1</div>
+                                <NImage v-if="rightPreviewVisible" :src="right_eye_y1" class="preview-image show"
+                                    alt="右眼眼底预处理图像预览1" preview-disabled />
 
+                            </div>
                         </div>
-                    </div>
-                    <div class="eye-sections">
-                        <div class="preview-area">
-                            <div v-if="!leftPreviewVisible" class="preview-placeholder">左眼眼底预处理图像预览区域1</div>
-                            <NImage v-if="leftPreviewVisible" :src="left_eye_x1" class="preview-image show"
-                                alt="左眼眼底预处理图像预览1" preview-disabled />
-                        </div>
-                        <div class="preview-area">
-                            <div v-if="!rightPreviewVisible" class="preview-placeholder">右眼眼底预处理图像预览区域1</div>
-                            <NImage v-if="rightPreviewVisible" :src="right_eye_y1" class="preview-image show"
-                                alt="右眼眼底预处理图像预览1" preview-disabled />
+                    </NCard>
+                    <NCard v-if="detectionCard.status === 'completed'" class="analysis-card">
+                        <h2 class="section-title">
+                            <NIcon size="20" class="mr-2">
+                                <ImageOutline />
+                            </NIcon>
+                            预处理图像
+                        </h2>
+                        <div class="eye-sections">
+                            <div class="preview-area">
+                                <div v-if="!leftPreviewVisible" class="preview-placeholder">左眼眼底预处理图像预览区域2</div>
+                                <NImage v-if="leftPreviewVisible" :src="left_eye_x2" class="preview-image show"
+                                    alt="左眼眼底预处理图像预览2" preview-disabled />
+                            </div>
+                            <div class="preview-area">
+                                <div v-if="!rightPreviewVisible" class="preview-placeholder">右眼眼底预处理图像预览区域2</div>
+                                <NImage v-if="rightPreviewVisible" :src="right_eye_y2" class="preview-image show"
+                                    alt="右眼眼底预处理图像预览2" preview-disabled />
 
+                            </div>
                         </div>
-                    </div>
-                    <div class="eye-sections">
-                        <div class="preview-area">
-                            <div v-if="!leftPreviewVisible" class="preview-placeholder">左眼眼底预处理图像预览区域2</div>
-                            <NImage v-if="leftPreviewVisible" :src="left_eye_x2" class="preview-image show"
-                                alt="左眼眼底预处理图像预览2" preview-disabled />
-                        </div>
-                        <div class="preview-area">
-                            <div v-if="!rightPreviewVisible" class="preview-placeholder">右眼眼底预处理图像预览区域2</div>
-                            <NImage v-if="rightPreviewVisible" :src="right_eye_y2" class="preview-image show"
-                                alt="右眼眼底预处理图像预览2" preview-disabled />
-
-                        </div>
-                    </div>
-                </div>
+                    </NCard>
             </div>
             <!-- 右侧分析结果区域 -->
             <div class="result-section">
@@ -398,6 +415,21 @@ const viewDetailReport = () => {
                             class="placeholder-text">
                             {{ detectionCard.status === 'waiting' ? '请先上传眼底图像并点击"开始分析"按钮' : '正在分析中，请稍候...' }}
                         </p>
+                        <div v-if="detectionCard.status === 'completed'" class="analysis-card">
+                            <h2 class="section-title">
+                                <NIcon size="20" class="mr-2">
+                                    <ImageOutline />
+                                </NIcon>
+                                预处理图像
+                            </h2>
+                            <div class="eye-sections">
+                                <div class="preview-area">
+                                    <div v-if="!leftPreviewVisible" class="preview-placeholder">左眼眼底预处理图像预览区域</div>
+                                    <NImage v-if="leftPreviewVisible" :src="merged" class="preview-image show"
+                                        alt="合并预处理图像预览" preview-disabled />
+                                </div>
+                            </div>
+                        </div>
                         <div v-if="detectionCard.status === 'completed'" class="result-container">
                             <div v-for="(result, index) in detectionCard.results" :key="index" class="result-item">
                                 <div class="result-label">{{ result.name }}:</div>
@@ -559,9 +591,10 @@ const viewDetailReport = () => {
 }
 
 .preview-image {
-    max-width: 100%;
-    max-height: 100%;
+    max-width: 300px; /* 设置图片的最大宽度 */
+    max-height: 300px; /* 设置图片的最大高度 */
     display: none;
+    object-fit: contain; /* 确保图片等比例缩小 */
 }
 
 .preview-image.show {
@@ -580,6 +613,9 @@ const viewDetailReport = () => {
     background-color: var(--n-card-color);
     border-radius: 8px;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    margin-bottom: 20px;
+    height: auto; /* 设置卡片的高度为自动 */
 }
 
 .analysis-card.inactive {
@@ -735,4 +771,29 @@ const viewDetailReport = () => {
         flex-direction: column;
     }
 }
+
+/* 医生备注 */
+.notes-content {
+  padding: 10px 0;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  background-color: var(--n-card-color);
+}
+
+.notes-textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--n-border-color);
+  border-radius: 4px;
+  background-color: var(--n-input-color);
+  color: var(--n-text-color);
+  resize: vertical;
+  
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+}
+
+.notes-textarea:focus {
+  outline: none;
+  border-color: var(--n-primary-color);
+}
+
 </style>
