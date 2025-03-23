@@ -146,13 +146,13 @@ def make_patend_info(
         database="medical_db"
     )
     cursor = conn.cursor()
-
+    print(patient_id)
     # 如果 patient_id 为空，则自动生成新的 patient_id
-    if patient_id is None:
+    if patient_id is None and patient_id != 0:
         cursor.execute("SELECT MAX(patient_id) FROM patient_info")
         max_patient_id = cursor.fetchone()[0]
         patient_id = 1 if max_patient_id is None else max_patient_id + 1
-
+    print(patient_id)
     # 插入 SQL 语句
     query = """
     INSERT INTO patient_info (patient_id, patient_name,patient_gender, patient_age)
@@ -265,6 +265,176 @@ def save_results(patient_id=None,
     print("数据插入成功")
     return now_record_id, fund_id
 
+def get_recent_records(limit=5):
+    """
+    查询最近插入诊断信息表中的最新记录，并查询相关的患者信息和影像信息
+    
+    参数:
+    limit (int): 返回的记录数量，默认为5条
+    
+    返回:
+    list: 包含结构化数据的记录列表
+    """
+    try:
+        # 连接数据库
+        conn = mysql.connector.connect(
+            host="113.44.61.230",
+            user="root",
+            password="Ytb@210330!",
+            database="medical_db"
+        )
+        cursor = conn.cursor(dictionary=True)  # 使用字典游标获取结果
+        
+        # 查询最近的诊断记录
+        query = """
+        SELECT r.record_id, r.patient_id, r.fund_id, r.result, r.suggestion, r.diagnosis_date, r.user_id
+        FROM record_info r
+        ORDER BY r.diagnosis_date DESC
+        LIMIT %s
+        """
+        cursor.execute(query, (limit,))
+        records = cursor.fetchall()
+        
+        # 查询患者信息和影像信息
+        result_records = []
+        
+        for record in records:
+            patient_id = record['patient_id']
+            fund_id = record['fund_id']
+
+            # 查询患者信息
+            patient_query = """
+            SELECT patient_id, patient_name, patient_gender, patient_age
+            FROM patient_info
+            WHERE patient_id = %s
+            """
+            cursor.execute(patient_query, (patient_id,))
+            patient_info = cursor.fetchone()
+            
+            # 查询影像信息（包含二进制数据）
+            fund_info = None
+            if fund_id is not None:
+                fund_query = """
+                SELECT fund_id, left_fund_keyword, right_fund_keyword, patient_id, left_fund, right_fund
+                FROM fund_info
+                WHERE fund_id = %s
+                """
+                cursor.execute(fund_query, (fund_id,))
+                fund_info = cursor.fetchone()
+                
+                # 如果存在二进制数据，将其转换为base64编码字符串
+                if fund_info:
+                    if fund_info['left_fund'] is not None:
+                        fund_info['left_fund'] = base64.b64encode(fund_info['left_fund']).decode('utf-8')
+                    if fund_info['right_fund'] is not None:
+                        fund_info['right_fund'] = base64.b64encode(fund_info['right_fund']).decode('utf-8')
+            
+            # 构建结构化记录
+            structured_record = {
+                'record': record,
+                'patient': patient_info,
+                'fund': fund_info
+            }
+            
+            result_records.append(structured_record)
+        
+        return result_records
+        
+    except mysql.connector.Error as err:
+        print(f"数据库错误: {err}")
+        raise
+    finally:
+        # 关闭连接
+        if 'cursor' in locals() and cursor:
+            cursor.close()
+        if 'conn' in locals() and conn.is_connected():
+            conn.close()
+
+def get_patient_records(patient_id):
+    """
+    根据患者ID查询所有诊断记录，以及相关的影像信息
+    
+    参数:
+    patient_id (int): 患者ID
+    
+    返回:
+    dict: 包含患者信息和诊断记录列表的结构化数据
+    """
+    try:
+        # 连接数据库
+        conn = mysql.connector.connect(
+            host="113.44.61.230",
+            user="root",
+            password="Ytb@210330!",
+            database="medical_db"
+        )
+        cursor = conn.cursor(dictionary=True)  # 使用字典游标获取结果
+        
+        # 查询患者信息
+        patient_query = """
+        SELECT patient_id, patient_name, patient_gender, patient_age
+        FROM patient_info
+        WHERE patient_id = %s
+        """
+        cursor.execute(patient_query, (patient_id,))
+        patient_info = cursor.fetchone()
+        
+        if not patient_info:
+            return {"error": f"患者ID {patient_id} 不存在"}
+        
+        # 查询该患者的所有诊断记录
+        records_query = """
+        SELECT r.record_id, r.patient_id, r.fund_id, r.result, r.suggestion, r.diagnosis_date, r.user_id
+        FROM record_info r
+        WHERE r.patient_id = %s
+        ORDER BY r.diagnosis_date DESC
+        """
+        cursor.execute(records_query, (patient_id,))
+        records = cursor.fetchall()
+        
+        # 查询每条记录关联的影像信息
+        for record in records:
+            fund_id = record['fund_id']
+            
+            # 查询影像信息（包含二进制数据）
+            if fund_id is not None:
+                fund_query = """
+                SELECT fund_id, left_fund_keyword, right_fund_keyword, patient_id, left_fund, right_fund
+                FROM fund_info
+                WHERE fund_id = %s
+                """
+                cursor.execute(fund_query, (fund_id,))
+                fund_info = cursor.fetchone()
+                
+                # 如果存在二进制数据，将其转换为base64编码字符串
+                if fund_info:
+                    if fund_info['left_fund'] is not None:
+                        fund_info['left_fund'] = base64.b64encode(fund_info['left_fund']).decode('utf-8')
+                    if fund_info['right_fund'] is not None:
+                        fund_info['right_fund'] = base64.b64encode(fund_info['right_fund']).decode('utf-8')
+                
+                record['fund_info'] = fund_info
+            else:
+                record['fund_info'] = None
+        
+        # 构建结构化数据
+        result = {
+            'patient': patient_info,
+            'records': records
+        }
+        
+        return result
+        
+    except mysql.connector.Error as err:
+        print(f"数据库错误: {err}")
+        raise
+    finally:
+        # 关闭连接
+        if 'cursor' in locals() and cursor:
+            cursor.close()
+        if 'conn' in locals() and conn.is_connected():
+            conn.close()
+
 if __name__ == "__main__":
     # make_user_info(user_id=1,
     #                user_account="123456",
@@ -273,11 +443,28 @@ if __name__ == "__main__":
     #                user_phone="1234567890",
     #                user_gender="Male",
     #                user_age=20)
-    left_fund = read_image_file("F:\BFPC\cropped_#Training_Dataset/1_left.jpg")
-    right_fund = read_image_file("F:\BFPC\cropped_#Training_Dataset/1_right.jpg")
-    save_results(patient_id=1,predict_result="糖尿病，青光眼",advise="不要吃什么",patient_age=20,patient_sex='Male',
-                 left_fund_keyword="left",
-                 right_fund_keyword="right",
-                 left_fund=left_fund,
-                 right_fund=right_fund
-                 )
+    # left_fund = read_image_file("F:\BFPC\cropped_#Training_Dataset/1_left.jpg")
+    # right_fund = read_image_file("F:\BFPC\cropped_#Training_Dataset/1_right.jpg")
+    # save_results(patient_id=1,predict_result="糖尿病，青光眼",advise="不要吃什么",patient_age=20,patient_sex='Male',
+    #              left_fund_keyword="left",
+    #              right_fund_keyword="right",
+    #              left_fund=left_fund,
+    #              right_fund=right_fund
+    #              )
+    
+    #示例：查询最近5条诊断记录
+    # recent_records = get_recent_records(5)
+    # print(f"查询到 {len(recent_records)} 条最近诊断记录")
+    # for record in recent_records:
+    #     print(f"记录ID: {record['record']['record_id']}, 患者: {record['patient']['patient_name']}, 诊断结果: {record['record']['result']}")
+    
+    # 示例：根据患者ID查询诊断记录
+    patient_records = get_patient_records(1)
+    if "error" in patient_records:
+        print(patient_records["error"])
+    else:
+        patient = patient_records["patient"]
+        records = patient_records["records"]
+        print(f"患者: {patient['patient_id']}, 共有 {len(records)} 条诊断记录")
+        for record in records:
+            print(f"记录ID: {record['record_id']}, 诊断日期: {record['diagnosis_date']}, 诊断结果: {record['result']}")

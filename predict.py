@@ -5,9 +5,12 @@ import numpy as np
 import zipfile
 from model_with_gate import BFPCNet1
 import pandas as pd
+from doubao import get_book
 import albumentations as A
 from transformers import AutoTokenizer, AutoModel
 from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
+import mysql.connector
+from sql_APIs import *
 mean = IMAGENET_DEFAULT_MEAN
 std = IMAGENET_DEFAULT_STD
 one_hot = {
@@ -31,6 +34,9 @@ one_hot_to_name = {
     "6":"近视",
     "7":"其他疾病/异常 ",
 }
+
+
+
 def get_augmentations2():
     return A.Compose([
         A.Normalize(mean, std),
@@ -39,8 +45,7 @@ class Predict:
     def __init__(self,model_path,device,visualize=False):
         #模型还没搞好，这部分可以先不用看
         self.model = BFPCNet1(num_classes=8)
-        map_location = torch.device('cpu') if device == "cpu" else None
-        self.model.load_state_dict(torch.load(model_path, map_location=map_location), strict=False)
+        self.model.load_state_dict(torch.load(model_path),strict=False)
         self.model.to(device)
         self.model.eval()
         self.device = device
@@ -48,6 +53,7 @@ class Predict:
         self.bertmodel = AutoModel.from_pretrained("./biobert_model/") 
         self.transform = get_augmentations2()
         self.visualize = visualize
+        self.user_id = 1
 
     def extract_images_from_zip(self, zip_path, extract_dir):
         """从压缩包中提取图像文件"""
@@ -58,7 +64,17 @@ class Predict:
         
         return extract_dir
 
-    def predict(self, left_img=None, right_img=None, texts=None, imgs=None, xlxs=None, mode="single"):
+    def predict(self, 
+                left_img=None,
+                right_img=None,
+                texts=None,
+                patient_id=None,
+                patrint_name="张三",
+                patiend_gender=None,
+                patiend_age=None, 
+                imgs=None, 
+                xlxs=None, 
+                mode="single"):
         answers = []
         
         if texts is None:  # 处理无文本情况
@@ -144,7 +160,10 @@ class Predict:
             if mode == "single":
                 left_img_name = os.path.splitext(os.path.basename(left_img))[0]
                 right_img_name = os.path.splitext(os.path.basename(right_img))[0]
-
+                #print(left_img)
+                save_left_img = read_image_file(left_img)
+                save_right_img = read_image_file(right_img)
+                #print(save_left_img)
                 process = PreprocessAndCache_for_single(left_img, right_img, cache_dir="./temp_cache",text=texts)
                 cache_path = f"./temp_cache/{left_img_name}_{right_img_name}.npz"
 
@@ -156,9 +175,9 @@ class Predict:
                 data = np.concatenate((au['image'],au['right']), axis=1)
 
  
-                texts = str(single_data["left_keywords"]) + "," + str(single_data["right_keywords"])
+                texts_ori = str(single_data["left_keywords"]) + "," + str(single_data["right_keywords"])
 
-                inputs = self.tokenizer(texts, return_tensors="pt")
+                inputs = self.tokenizer(texts_ori, return_tensors="pt")
                 with torch.no_grad():
                     outputs = self.bertmodel(**inputs)
                     last_hidden_state = outputs.last_hidden_state  # shape: (batch_size, seq_len, hidden_dim)
@@ -175,7 +194,35 @@ class Predict:
                     if labels[i] == 1:
                         answers.append(one_hot_to_name[str(i)])
 
-                return answers
+                ans_str = ""
+
+                for i in answers:
+                    ans_str += i +','
+
+                advise = get_book(
+                    patient_name=patrint_name,
+                    patient_age=patiend_age,
+                    patient_sex=patiend_gender,
+                    patient_disease=ans_str,
+
+                )
+
+                save_results(
+                    patient_id=patient_id,
+                    patient_name=patrint_name,
+                    patient_age=patiend_age,
+                    patient_sex=patiend_gender,
+                    predict_result=ans_str,
+                    advise=advise,
+                    fund_id = None,
+                    left_fund_keyword=texts["left_text"],
+                    right_fund_keyword=texts["right_text"],
+                    left_fund=save_left_img,
+                    right_fund=save_right_img,
+           
+                )
+
+                return ans_str,advise
             
             elif mode == "batch":
                 if xlxs is None:
@@ -236,10 +283,51 @@ class Predict:
                         
                         result_key = patient_id if (patient_id != None) else f"{left_img_name}_{right_img_name}"
                         
-                        batch_results[result_key] = []
+                        # 收集预测结果
+                        prediction_results = []
                         for i in range(8):
                             if labels[i] == 1:
-                                batch_results[result_key].append(one_hot_to_name[str(i)])
+                                prediction_results.append(one_hot_to_name[str(i)])
+                        
+                        # 构建预测结果字符串
+                        ans_str = ",".join(prediction_results)
+                        
+                        # 获取患者信息
+                        patient_name = "张三"
+                        patient_age = row.get('Patient Age', None)
+                        patient_gender = row.get('Patient Sex', None)
+                        
+                        # 生成建议
+                        advise = get_book(
+                            patient_name=patient_name,
+                            patient_age=patient_age,
+                            patient_sex=patient_gender,
+                            patient_disease=ans_str,
+                        )
+                        
+                        # 保存结果到数据库
+                        save_left_img = read_image_file(left_img_path)
+                        save_right_img = read_image_file(right_img_path)
+                        
+                        record_id, fund_id = save_results(
+                            patient_id=patient_id,
+                            patient_name=patient_name,
+                            patient_age=patient_age,
+                            patient_sex=patient_gender,
+                            predict_result=ans_str,
+                            advise=advise,
+                            fund_id=None,
+                            left_fund_keyword=left_keywords,
+                            right_fund_keyword=right_keywords,
+                            left_fund=save_left_img,
+                            right_fund=save_right_img,
+                        )
+                        
+                        batch_results[result_key] = {
+                            'predictions': prediction_results,
+                            'record_id': record_id,
+                            'fund_id': fund_id
+                        }
                 
                 return batch_results
 
@@ -290,4 +378,24 @@ if __name__ == "__main__":
     p = Predict("F:\BFPC/final_model_state_dict_with_gate.pth", device="cpu")
     res = p.predict(imgs="F:\BFPC\ceshi\ceshi.zip",xlxs="F:\BFPC\ceshi\ceshi.xlsx",texts=True,mode="batch")
     print(res)
+    # import os
+
+    # path = "./biobert_model/"
+    # print("Path exists:", os.path.exists(path))
+    # print("Contents:", os.listdir(path) if os.path.exists(path) else "Directory not found")
+
+    # p = Predict("F:\BFPC/final_model_state_dict_with_gate.pth", device="cpu")
+    # res = p.predict(left_img="F:\BFPC\cropped_#Training_Dataset/0_left.jpg",right_img="F:\BFPC\cropped_#Training_Dataset/0_right.jpg",
+    #                 texts={
+    #                     'left_text':"wrwr",
+    #                     "right_text":"fwfefwe",
+    #                 },
+    #                 patiend_age=23,
+    #                 patiend_gender="Male",
+    #                 patrint_name="张三",
+    #                 mode="single",
+    #                 patient_id=1,
+    #                 )
+
+    # print(res)
 
