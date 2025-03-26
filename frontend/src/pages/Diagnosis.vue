@@ -131,7 +131,7 @@ const right_eye_y2 = ref('');
 const left_eye_text = ref('');
 const right_eye_text = ref('');
 // 不允许text为中文
-watch ([left_eye_text, right_eye_text], ([left, right]) => {
+watch([left_eye_text, right_eye_text], ([left, right]) => {
     if (left.match(/[\u4e00-\u9fa5]/) || right.match(/[\u4e00-\u9fa5]/)) {
         message.error('不允许输入中文');
         left_eye_text.value = '';
@@ -145,7 +145,27 @@ const patientGender = ref('');
 const patientAge = ref(0);
 // 分析处理
 const startAnalysis = async () => {
-    if (!leftFile.value || !rightFile.value) return;
+    // 检查是否可以开始分析
+    if (!analyzeBtn.value) {
+        message.error('请先上传左右眼图像');
+        return;
+    }
+    if (patientId.value === '') {
+        message.error('请输入患者ID');
+        return;
+    }
+    if (patientGender.value === '') {
+        message.error('请选择患者性别');
+        return;
+    }
+    if (patientAge.value === 0) {
+        message.error('请输入患者年龄');
+        return;
+    }
+    if (left_eye_text.value === '' || right_eye_text.value === '') {
+        message.error('请输入左右眼疾病预诊断关键词');
+        return;
+    }
 
     isAnalyzing.value = true;
 
@@ -178,30 +198,32 @@ const startAnalysis = async () => {
             },
         });
 
-         
+
         // 更新检测卡片状态
         detectionCard.value.status = 'completed';
         detectionCard.value.statusText = '分析完成';
 
         // 处理返回结果
-        const results = [];
+        const results: any[] = [];
         for (const [key, value] of Object.entries(json)) {
             if (Array.isArray(value)) {
+                console.log('检测结果:', key, value);
                 results.push({
                     name: value[0],
-                    isPositive: value[0] !== '正常',
-                    confidence: 90, // 这里可以根据实际情况设置置信度
+                    details: value[1].replace(/\n/g, '<br>'),
+                    // isPositive: value[2] === 'positive',
+                    isPositive: true,
+                    confidence: 80,
                 });
             }
         }
+        detectionCard.value.results = results;
         merged.value = 'data:image/jpeg;base64,' + json['merged_base64'];
         left_eye_x1.value = 'data:image/jpeg;base64,' + json['left_eye_x1'];
         left_eye_x2.value = 'data:image/jpeg;base64,' + json['left_eye_x2'];
         right_eye_y1.value = 'data:image/jpeg;base64,' + json['right_eye_y1'];
         right_eye_y2.value = 'data:image/jpeg;base64,' + json['right_eye_y2'];
-        console.log('检测结果:', json);
-
-        detectionCard.value.results = results;
+        // console.log('检测结果:', json);
 
         // 更新诊断卡片状态
         diagnosisCard.value.status = 'completed';
@@ -214,7 +236,7 @@ const startAnalysis = async () => {
         // 处理每个检测结果
         results.forEach((result) => {
             if (result.isPositive) {
-                problems.push(`检测到${result.name}，建议及时就医检查`);
+                problems.push(`检测到${result.name}建议及时就医检查`);
                 recommendations.push(`针对${result.name}进行专业治疗`);
             }
         });
@@ -265,17 +287,8 @@ const startAnalysis = async () => {
 };
 // 查看详细报告
 const viewDetailReport = () => {
-    // 生成一个随机ID作为当前诊断的唯一标识
-    const diagnosisId = 'D' + Date.now();
-    // 将图片数据存储在sessionStorage中
-    sessionStorage.setItem(
-        'diagnosisImages',
-        JSON.stringify({
-            leftEye: leftPreviewImage.value,
-            rightEye: rightPreviewImage.value,
-        }),
-    );
-    router.push(`/diagnosis/${diagnosisId}?type=new`);
+
+    router.push(`/diagnosis/${patientId.value}?type=new`);
 };
 </script>
 
@@ -327,14 +340,14 @@ const viewDetailReport = () => {
                             <NImage v-if="leftPreviewVisible" :src="leftPreviewImage" class="preview-image show"
                                 alt="左眼眼底图像预览" preview-disabled />
                         </div>
-                        <div class="card-title">
+                        <div v-if="detectionCard.status !== 'completed'" class="card-title">
                             <NIcon size="20" class="mr-2">
                                 <CheckmarkCircleOutline />
                             </NIcon>
                             左眼眼部疾病预诊断关键词
                         </div>
-                        <div>
-                            <NInput :v-model="left_eye_text" type="textarea" placeholder="左眼眼部疾病预诊断关键词" rows="4" />
+                        <div v-if="detectionCard.status !== 'completed'">
+                            <NInput v-model:value="left_eye_text" type="textarea" placeholder="左眼眼部疾病预诊断关键词" rows="4" />
                         </div>
                     </div>
                     <!-- 右眼上传区域 -->
@@ -360,14 +373,15 @@ const viewDetailReport = () => {
                             <NImage v-if="rightPreviewVisible" :src="rightPreviewImage" class="preview-image show"
                                 alt="右眼眼底图像预览" preview-disabled />
                         </div>
-                        <div class="card-title">
+                        <div v-if="detectionCard.status !== 'completed'" class="card-title">
                             <NIcon size="20" class="mr-2">
                                 <CheckmarkCircleOutline />
                             </NIcon>
                             右眼眼部疾病预诊断关键词
                         </div>
-                        <div>
-                            <NInput :v-model="right_eye_text" type="textarea" placeholder="右眼眼部疾病预诊断关键词" rows="4"   />
+                        <div v-if="detectionCard.status !== 'completed'">
+                            <NInput v-model:value="right_eye_text" type="textarea" placeholder="右眼眼部疾病预诊断关键词"
+                                rows="4" />
                         </div>
                     </div>
                 </div>
@@ -414,7 +428,7 @@ const viewDetailReport = () => {
             </div>
             <!-- 右侧分析结果区域 -->
             <div class="result-section">
-                <NForm>
+                <NForm v-if="detectionCard.status !== 'completed'">
                     <NFormItem label="患者ID">
                         <NInput v-model:value="patientId" placeholder="请输入患者ID" />
                     </NFormItem>
@@ -485,16 +499,11 @@ const viewDetailReport = () => {
                                 <div class="result-label">{{ result.name }}:</div>
                                 <div class="result-value"
                                     :class="{ positive: result.isPositive, negative: !result.isPositive }">
-                                    {{ result.isPositive ? '检测到' : '未检测到' }} ({{
-                                        result.confidence.toFixed(1)
-                                    }}%)
+                                    {{ result.isPositive ? '检测到' : '未检测到' }} ({{ result.confidence ? result.confidence.toFixed(1) : '99' }}%)
                                 </div>
-                                <NProgress :percentage="result.confidence" :status="result.confidence > 80
-                                    ? 'error'
-                                    : result.confidence > 30
-                                        ? 'warning'
-                                        : 'success'
-                                    " :show-indicator="false" class="confidence-bar" />
+                                <NProgress :percentage="result.confidence || 0" :status="result.confidence > 80 ? 'error' :
+                                    result.confidence > 30 ? 'warning' : 'success'" :show-indicator="false"
+                                    class="confidence-bar" />
                             </div>
                         </div>
                         <p v-if="detectionCard.status === 'error'" class="error-text">
@@ -502,8 +511,47 @@ const viewDetailReport = () => {
                         </p>
                     </div>
                 </NCard>
-                <!-- 预处理结果 -->
-                <NCard :class="{ inactive: !diagnosisCard.isActive }" class="analysis-card"> </NCard>
+                <!-- 诊断建议卡片 -->
+                <NCard :class="{ inactive: !diagnosisCard.isActive }" class="analysis-card">
+                    <template #header>
+                        <div class="card-header">
+                            <div class="card-title">
+                                <NIcon size="20" class="mr-2">
+                                    <MedicalOutline />
+                                </NIcon>
+                                诊断建议
+                            </div>
+                            <NTag :type="diagnosisCard.status === 'completed' ? 'success' :
+                                diagnosisCard.status === 'analyzing' ? 'warning' :
+                                    diagnosisCard.status === 'error' ? 'error' : 'info'">
+                                {{ diagnosisCard.statusText }}
+                            </NTag>
+                        </div>
+                    </template>
+                    <div class="card-content">
+                        <p v-if="diagnosisCard.status === 'waiting' || diagnosisCard.status === 'analyzing'"
+                            class="placeholder-text">
+                            {{ diagnosisCard.status === 'waiting' ? '分析完成后将显示诊断建议' : '正在生成诊断建议，请稍候...' }}
+                        </p>
+                        <div v-if="diagnosisCard.status === 'completed'" class="diagnosis-content">
+                            <p>基于AI分析，发现以下问题：</p>
+                            <ol style="margin-left: 20px; margin-top: 10px;">
+                                <li v-for="(problem, index) in diagnosisCard.content.problems" :key="index">
+                                    <span v-html="problem"></span>
+                                </li>
+                            </ol>
+                            <p style="margin-top: 15px;"><strong>建议：</strong></p>
+                            <ul style="margin-left: 20px; margin-top: 5px;">
+                                <li v-for="(rec, index) in diagnosisCard.content.recommendations" :key="index">
+                                    {{ rec }}
+                                </li>
+                            </ul>
+                        </div>
+                        <p v-if="diagnosisCard.status === 'error'" class="error-text">
+                            诊断建议生成失败，请重试
+                        </p>
+                    </div>
+                </NCard>
                 <!-- 分析按钮 -->
                 <NButton type="primary" size="large" block :disabled="!analyzeBtn || isAnalyzing"
                     @click="analysisCompleted ? viewDetailReport() : startAnalysis()" :loading="isAnalyzing">
