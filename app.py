@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 import base64
 from io import BytesIO
 from cut_blend import cut_blend
+from sql_APIs import get_patient_records 
+
 app = Flask(__name__, static_folder='./frontend/dist')
 CORS(app)  # Enable CORS on all routes
 
@@ -75,7 +77,7 @@ def predict():
     os.remove(left_eye_file_path)
     os.remove(right_eye_file_path)
 
-    print(left_eye_file_path, right_eye_file_path)
+    print(result)
     return jsonify({
         'merged_base64': merged_base64,
         'left_eye_x1': img_left_x1_base64,
@@ -134,7 +136,13 @@ def predict():
     #         shutil.rmtree("temp")
     #     return jsonify({'error': str(e)}), 500
 
-
+@app.route('/get_patient_record', methods=['POST'])
+def get_patient_record():
+    print("get_patient_record",request.get_json())
+    patient_id = request.get_json()['id']
+    print("patient_id",patient_id)
+    record = get_patient_records(patient_id)
+    return jsonify(record), 200
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def catch_all(path):
