@@ -20,7 +20,12 @@ predictor = Predict(model_path, device="cpu")
 def predict():
     left_eye_file = request.files['left_eye']
     right_eye_file = request.files['right_eye']
-
+    left_eye_text = request.form.get('left_eye_text')
+    right_eye_text = request.form.get('right_eye_text')
+    patient_id = request.form.get('patientId')
+    patient_name = request.form.get('patientName')
+    patient_gender = request.form.get('patientGender')
+    patient_age = request.form.get('patientAge')
     if not os.path.exists("temp"):
         os.makedirs("temp")
     
@@ -56,9 +61,12 @@ def predict():
     plt.imsave(img_right_y2_buffer, img_right_y2, format='jpg')
     img_right_y2_base64 = base64.b64encode(img_right_y2_buffer.getvalue()).decode('utf-8')
     result = predictor.predict(left_img="./"+left_eye_file_path, right_img="./"+right_eye_file_path,texts={
-        "left_text": "左眼",
-        "right_text": "右眼"
-    }, mode="single")
+        "left_text": left_eye_text,
+        "right_text": right_eye_text,
+    },patient_id=patient_id,
+    patrint_name=patient_name,
+    patiend_gender=patient_gender,
+    patiend_age=patient_age, mode="single")
 
     merged = pre.merge_double_imgs("./" + left_eye_file_path, "./" + right_eye_file_path)
     merged_buffer = BytesIO()
