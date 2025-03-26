@@ -16,7 +16,7 @@ prompt = "请根据患者的性别、年龄、病史和我们模型预测出来�
         病情：xxxxxxx\
         建议用药：xxxxxxx\
         建议检查项目：xxxxxxx\
-        注意事项：xxxxxxx"
+        注意事项：xxxxxxx，请严格按照格式输出，即使患者没有明确患任何疾病。"
 
 def get_book(patient_name,patient_age,patient_sex,patient_disease,patient_history="无"):
 
