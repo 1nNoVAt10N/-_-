@@ -11,6 +11,7 @@ from transformers import AutoTokenizer, AutoModel
 from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 import mysql.connector
 from sql_APIs import *
+import re
 mean = IMAGENET_DEFAULT_MEAN
 std = IMAGENET_DEFAULT_STD
 one_hot = {
@@ -35,7 +36,33 @@ one_hot_to_name = {
     "7":"其他疾病/异常 ",
 }
 
+def parse_medical_record(text):
+    """解析医疗记录文本并转换为字典格式（不保留换行）"""
+    result = {}
+    lines = text.splitlines()  # 处理不同平台的换行符
+    current_key = None
+    current_value = []
 
+    for line in lines:
+        line = line.strip()  # 清除前后空格
+        if not line:
+            continue  # 跳过空行
+
+        match = re.match(r"([^:：]+)[：:](.*)", line)  # 兼容全角/半角冒号
+        if match:
+            if current_key is not None:
+                result[current_key] = " ".join(current_value).strip()
+            
+            current_key = match.group(1).strip()
+            current_value = [match.group(2).strip()]
+        else:
+            if current_key is not None:
+                current_value.append(line.strip())  # 追加时用空格连接
+
+    if current_key is not None:
+        result[current_key] = " ".join(current_value).strip()
+
+    return result
 
 def get_augmentations2():
     return A.Compose([
@@ -222,7 +249,7 @@ class Predict:
                     right_fund=save_right_img,
            
                 )
-
+                advise = parse_medical_record(advise)
                 return ans_str,advise
             
             elif mode == "batch":
@@ -376,27 +403,27 @@ if __name__ == "__main__":
 
     # print(f"预测完成，结果已保存至 {output_csv}")
     
-    p = Predict("F:\BFPC/final_model_state_dict_with_gate.pth", device="cpu")
-    res = p.predict(imgs="F:\BFPC\ceshi\ceshi.zip",xlxs="F:\BFPC\ceshi\ceshi.xlsx",texts=True,mode="batch")
-    print(res)
+    # p = Predict("F:\BFPC/final_model_state_dict_with_gate.pth", device="cpu")
+    # res = p.predict(imgs="F:\BFPC\ceshi\ceshi.zip",xlxs="F:\BFPC\ceshi\ceshi.xlsx",texts=True,mode="batch")
+    # print(res)
     # import os
 
     # path = "./biobert_model/"
     # print("Path exists:", os.path.exists(path))
     # print("Contents:", os.listdir(path) if os.path.exists(path) else "Directory not found")
 
-    # p = Predict("F:\BFPC/final_model_state_dict_with_gate.pth", device="cpu")
-    # res = p.predict(left_img="F:\BFPC\cropped_#Training_Dataset/0_left.jpg",right_img="F:\BFPC\cropped_#Training_Dataset/0_right.jpg",
-    #                 texts={
-    #                     'left_text':"wrwr",
-    #                     "right_text":"fwfefwe",
-    #                 },
-    #                 patiend_age=23,
-    #                 patiend_gender="Male",
-    #                 patrint_name="张三",
-    #                 mode="single",
-    #                 patient_id=1,
-    #                 )
+    p = Predict("F:\BFPC/final_model_state_dict_with_gate.pth", device="cpu")
+    res = p.predict(left_img="F:\BFPC\cropped_#Training_Dataset/0_left.jpg",right_img="F:\BFPC\cropped_#Training_Dataset/0_right.jpg",
+                    texts={
+                        'left_text':"wrwr",
+                        "right_text":"fwfefwe",
+                    },
+                    patiend_age=23,
+                    patiend_gender="Male",
+                    patrint_name="张三",
+                    mode="single",
+                    patient_id=1,
+                    )
 
-    # print(res)
+    print(res)
 
