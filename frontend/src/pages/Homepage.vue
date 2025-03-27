@@ -31,7 +31,7 @@ const getGithubAvatar = (githubUrl: string) => {
 const navItems = ['项目背景', '模型优势', '系统涵盖功能', '项目人员'];
 
 // DOM 引用
-const contentRef = ref<HTMLElement | null>(null);
+const contentRef = ref<HTMLElement | null>(null)!;
 const activeIndex = ref(0);
 const borderLeft = ref('0px');
 const borderWidth = ref('0px');
@@ -85,8 +85,19 @@ const containerRef = ref(<HTMLElement | undefined>undefined);
 import { NAvatar, NButton, NTag, NIcon } from 'naive-ui'
 import { LogoGithub } from '@vicons/ionicons5'
 
-const teamMembers = [
-    {
+type TagType = 'default' | 'error' | 'success' | 'warning' | 'primary' | 'info';
+
+const teamMembers: Array<{
+  name: string;
+  initials: string;
+  role: string;
+  github: string;
+  major: string;
+  color: string;
+  tag: string;
+  tagType: TagType;
+}> = [
+  {
     name: '姜星宇',
     initials: 'JXY',
     role: '前端页面设计',
@@ -136,7 +147,7 @@ const teamMembers = [
     tag: '队员',
     tagType: 'info'
   }
-]
+];
 </script>
 
 <template>
@@ -177,8 +188,10 @@ const teamMembers = [
       <div class="module-header-empty"></div>
     </div>
   </div>
+  
+  <!-- <n-affix :trigger-top="0" :listen-to="() => contentRef" position="absolute"> -->
 
-  <n-affix :trigger-top="0" :listen-to="() => contentRef" position="absolute">
+  <n-affix :trigger-top="0" position="absolute">
     <div class="module-nav-container">
       <ul class="module-nav-tab">
         <li v-for="(item, index) in navItems" :key="index" class="module-nav-item"
