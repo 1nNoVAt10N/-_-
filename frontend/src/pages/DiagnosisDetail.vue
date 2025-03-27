@@ -12,7 +12,7 @@
     PrintOutline
     } from '@vicons/ionicons5'
     import { NIcon, NCard, NButton, NSpin, NImage, NTag, NProgress } from 'naive-ui'
-import axios from 'axios'
+    import axios from 'axios'
 
     const route = useRoute()
     const router = useRouter()
