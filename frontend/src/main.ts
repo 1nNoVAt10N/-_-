@@ -7,7 +7,9 @@ import NotFound from './pages/NotFound.vue';
 import Recognition from './pages/Recognition.vue';
 import Recognition1 from './pages/Recognition1.vue';
 import Diagnosis from './pages/Diagnosis.vue';
-import DiagnosisDetail from './pages/DiagnosisDetail.vue';
+import DiagnosisList from './pages/DiagnosisList.vue';
+import MedicalRecords from './pages/MedicalRecords.vue';
+import Fund from './pages/Fund.vue';
 import Dashboard from './pages/Dashboard.vue';
 import Login from './pages/Login.vue';
 
@@ -19,7 +21,9 @@ const routes = [
   { path: '/singleRecognition', component: Recognition },
   { path: '/multiRecognition', component: Recognition1 },
   { path: '/diagnosis', component: Diagnosis },
-  { path: '/diagnosis/:id', component: DiagnosisDetail },
+  { path: '/diagnosis/:id', component: DiagnosisList },
+  {path: '/medical-records', component: MedicalRecords},
+  {path: '/fund/:id', component: Fund},
   { path: '/:pathMatch(.*)*', component: NotFound },
 ];
 

@@ -205,18 +205,40 @@ const startAnalysis = async () => {
 
         // 处理返回结果
         const results: any[] = [];
-        for (const [key, value] of Object.entries(json)) {
-            if (Array.isArray(value)) {
-                console.log('检测结果:', key, value);
-                results.push({
-                    name: value[0],
-                    details: value[1].replace(/\n/g, '<br>'),
-                    // isPositive: value[2] === 'positive',
-                    isPositive: true,
-                    confidence: 80,
-                });
-            }
-        }
+        // for (const [key, value] of Object.entries(json)) {
+        //     if (Array.isArray(value)) {
+        //         console.log('检测结果:', key, value);
+        //         results.push({
+        //             name: value[0],
+        //             details: value[1],
+        //             // isPositive: value[2] === 'positive',
+        //             isPositive: true,
+        //             confidence: 80,
+        //         });
+        //     }
+        // }
+        console.log('检测结果:', json);
+
+        const patientIll = ref('');
+        const patientNameX = ref('');
+        const patientAgeX = ref('');
+        const patientGenderX = ref('');
+        const patientIllness = ref('');
+        const patientRecommendMedicine = ref('');
+        const patientRecommendCheck = ref('');
+        const patientAttention = ref('');
+
+        patientIll.value = json['result'][0];
+        patientNameX.value = json['result'][1]["患者名称"];
+        patientAgeX.value = json['result'][1]["患者年龄"];
+        patientGenderX.value = json['result'][1]["患者性别"];
+        patientIllness.value = json['result'][1]["病情"];
+        patientRecommendMedicine.value = json['result'][1]["建议用药"];
+        patientRecommendCheck.value = json['result'][1]["建议检查项目"];
+        patientAttention.value = json['result'][1]["注意事项"];
+        results.push({
+            name: json['result'][0],
+        });
         detectionCard.value.results = results;
         merged.value = 'data:image/jpeg;base64,' + json['merged_base64'];
         left_eye_x1.value = 'data:image/jpeg;base64,' + json['left_eye_x1'];
@@ -241,15 +263,14 @@ const startAnalysis = async () => {
             }
         });
 
-        // 如果没有检测到问题
-        if (problems.length === 0) {
-            problems.push('未检测到明显异常');
-            recommendations.push('建议定期进行眼底检查');
-        }
-
-        // 添加通用建议
-        recommendations.push('保持良好用眼习惯');
-        recommendations.push('定期进行眼底检查');
+        problems.push(patientIll.value);
+        recommendations.push(`患者姓名：${patientNameX.value}`);
+        recommendations.push(`患者年龄：${patientAgeX.value}`);
+        recommendations.push(`患者性别：${patientGenderX.value}`);
+        recommendations.push(`病情：${patientIllness.value}`);
+        recommendations.push(`建议用药：${patientRecommendMedicine.value}`);
+        recommendations.push(`建议检查项目：${patientRecommendCheck.value}`);
+        recommendations.push(`注意事项：${patientAttention.value}`);
 
         diagnosisCard.value.content = {
             problems,
@@ -316,81 +337,84 @@ const viewDetailReport = () => {
                     </NIcon>
                     上传眼底图像
                 </h2>
-                <div class="eye-sections">
-                    <!-- 左眼上传区域 -->
-                    <div class="eye-section">
-                        <h3 class="eye-title">左眼图像</h3>
-                        <div v-if="detectionCard.status !== 'completed'" class="upload-area left"
-                            @click="leftFileInput?.click()" @dragover="(e) => handleDragOver(e, 'left')"
-                            @dragleave="() => handleDragLeave('left')" @drop="(e) => handleDrop(e, 'left')">
-                            <div class="upload-icon">
-                                <NIcon size="48">
-                                    <CloudUploadOutline />
-                                </NIcon>
+
+                <!-- 左眼预览区域 -->
+                <NCard class="analysis-card">
+                    <div class="eye-sections">
+                        <!-- 左眼上传区域 -->
+                        <div class="eye-section">
+                            <h3 class="eye-title">左眼图像</h3>
+                            <div v-if="leftPreviewImage == ''" class="upload-area left" @click="leftFileInput?.click()"
+                                @dragover="(e) => handleDragOver(e, 'left')" @dragleave="() => handleDragLeave('left')"
+                                @drop="(e) => handleDrop(e, 'left')">
+                                <div class="upload-icon">
+                                    <NIcon size="48">
+                                        <CloudUploadOutline />
+                                    </NIcon>
+                                </div>
+                                <div class="upload-text">点击或拖拽文件到此区域上传</div>
+                                <div class="upload-hint">支持 JPG、PNG、TIFF 格式，单个文件不超过20MB</div>
+                                <NButton type="primary">选择文件</NButton>
+                                <input type="file" ref="leftFileInput" style="display: none" accept="image/*"
+                                    @change="handleLeftFileUpload" />
                             </div>
-                            <div class="upload-text">点击或拖拽文件到此区域上传</div>
-                            <div class="upload-hint">支持 JPG、PNG、TIFF 格式，单个文件不超过20MB</div>
-                            <NButton type="primary">选择文件</NButton>
-                            <input type="file" ref="leftFileInput" style="display: none" accept="image/*"
-                                @change="handleLeftFileUpload" />
+                            <div class="preview-area">
+                                <div v-if="!leftPreviewVisible" class="preview-placeholder"></div>
+                                <NImage v-if="leftPreviewVisible" :src="leftPreviewImage" class="preview-image show"
+                                    alt="左眼眼底图像预览" preview-disabled />
+                            </div>
+                            <div v-if="detectionCard.status !== 'completed'" class="card-title">
+                                <NIcon size="20" class="mr-2">
+                                    <CheckmarkCircleOutline />
+                                </NIcon>
+                                左眼眼部疾病预诊断关键词
+                            </div>
+                            <div v-if="detectionCard.status !== 'completed'">
+                                <NInput v-model:value="left_eye_text" type="textarea" placeholder="左眼眼部疾病预诊断关键词"
+                                    rows="4" />
+                            </div>
                         </div>
-                        <!-- 左眼预览区域 -->
-                        <div class="preview-area">
-                            <div v-if="!leftPreviewVisible" class="preview-placeholder">左眼图像预览区域</div>
-                            <NImage v-if="leftPreviewVisible" :src="leftPreviewImage" class="preview-image show"
-                                alt="左眼眼底图像预览" preview-disabled />
-                        </div>
-                        <div v-if="detectionCard.status !== 'completed'" class="card-title">
-                            <NIcon size="20" class="mr-2">
-                                <CheckmarkCircleOutline />
-                            </NIcon>
-                            左眼眼部疾病预诊断关键词
-                        </div>
-                        <div v-if="detectionCard.status !== 'completed'">
-                            <NInput v-model:value="left_eye_text" type="textarea" placeholder="左眼眼部疾病预诊断关键词" rows="4" />
+                        <!-- 右眼上传区域 -->
+                        <div class="eye-section">
+                            <h3 class="eye-title">右眼图像</h3>
+                            <div v-if="rightPreviewImage == ''" class="upload-area right"
+                                @click="rightFileInput?.click()" @dragover="(e) => handleDragOver(e, 'right')"
+                                @dragleave="() => handleDragLeave('right')" @drop="(e) => handleDrop(e, 'right')">
+                                <div class="upload-icon">
+                                    <NIcon size="48">
+                                        <CloudUploadOutline />
+                                    </NIcon>
+                                </div>
+                                <div class="upload-text">点击或拖拽文件到此区域上传</div>
+                                <div class="upload-hint">支持 JPG、PNG、TIFF 格式，单个文件不超过20MB</div>
+                                <NButton type="primary">选择文件</NButton>
+                                <input type="file" ref="rightFileInput" style="display: none" accept="image/*"
+                                    @change="handleRightFileUpload" />
+                            </div>
+                            <div class="preview-area">
+                                <div v-if="!rightPreviewVisible" class="preview-placeholder"></div>
+                                <NImage v-if="rightPreviewVisible" :src="rightPreviewImage" class="preview-image show"
+                                    alt="右眼眼底图像预览" preview-disabled />
+                            </div>
+                            <div v-if="detectionCard.status !== 'completed'" class="card-title">
+                                <NIcon size="20" class="mr-2">
+                                    <CheckmarkCircleOutline />
+                                </NIcon>
+                                右眼眼部疾病预诊断关键词
+                            </div>
+                            <div v-if="detectionCard.status !== 'completed'">
+                                <NInput v-model:value="right_eye_text" type="textarea" placeholder="右眼眼部疾病预诊断关键词"
+                                    rows="4" />
+                            </div>
                         </div>
                     </div>
-                    <!-- 右眼上传区域 -->
-                    <div class="eye-section">
-                        <h3 class="eye-title">右眼图像</h3>
-                        <div v-if="detectionCard.status !== 'completed'" class="upload-area right"
-                            @click="rightFileInput?.click()" @dragover="(e) => handleDragOver(e, 'right')"
-                            @dragleave="() => handleDragLeave('right')" @drop="(e) => handleDrop(e, 'right')">
-                            <div class="upload-icon">
-                                <NIcon size="48">
-                                    <CloudUploadOutline />
-                                </NIcon>
-                            </div>
-                            <div class="upload-text">点击或拖拽文件到此区域上传</div>
-                            <div class="upload-hint">支持 JPG、PNG、TIFF 格式，单个文件不超过20MB</div>
-                            <NButton type="primary">选择文件</NButton>
-                            <input type="file" ref="rightFileInput" style="display: none" accept="image/*"
-                                @change="handleRightFileUpload" />
-                        </div>
-                        <!-- 右眼预览区域 -->
-                        <div class="preview-area">
-                            <div v-if="!rightPreviewVisible" class="preview-placeholder">右眼图像预览区域</div>
-                            <NImage v-if="rightPreviewVisible" :src="rightPreviewImage" class="preview-image show"
-                                alt="右眼眼底图像预览" preview-disabled />
-                        </div>
-                        <div v-if="detectionCard.status !== 'completed'" class="card-title">
-                            <NIcon size="20" class="mr-2">
-                                <CheckmarkCircleOutline />
-                            </NIcon>
-                            右眼眼部疾病预诊断关键词
-                        </div>
-                        <div v-if="detectionCard.status !== 'completed'">
-                            <NInput v-model:value="right_eye_text" type="textarea" placeholder="右眼眼部疾病预诊断关键词"
-                                rows="4" />
-                        </div>
-                    </div>
-                </div>
+                </NCard>
                 <NCard v-if="detectionCard.status === 'completed'" class="analysis-card">
                     <h2 class="section-title">
                         <NIcon size="20" class="mr-2">
                             <ImageOutline />
                         </NIcon>
-                        预处理图像
+                        血管分割图像
                     </h2>
                     <div class="eye-sections">
                         <div class="preview-area">
@@ -410,7 +434,7 @@ const viewDetailReport = () => {
                         <NIcon size="20" class="mr-2">
                             <ImageOutline />
                         </NIcon>
-                        预处理图像
+                        血管映射图像
                     </h2>
                     <div class="eye-sections">
                         <div class="preview-area">
@@ -489,21 +513,9 @@ const viewDetailReport = () => {
                             <div class="eye-sections">
                                 <div class="preview-area">
                                     <div v-if="!leftPreviewVisible" class="preview-placeholder">左眼眼底预处理图像预览区域</div>
-                                    <NImage v-if="leftPreviewVisible" :src="merged" class="preview-image show"
+                                    <NImage v-if="leftPreviewVisible" :src="merged" class="preview-image1 show"
                                         alt="合并预处理图像预览" preview-disabled />
                                 </div>
-                            </div>
-                        </div>
-                        <div v-if="detectionCard.status === 'completed'" class="result-container">
-                            <div v-for="(result, index) in detectionCard.results" :key="index" class="result-item">
-                                <div class="result-label">{{ result.name }}:</div>
-                                <div class="result-value"
-                                    :class="{ positive: result.isPositive, negative: !result.isPositive }">
-                                    {{ result.isPositive ? '检测到' : '未检测到' }} ({{ result.confidence ? result.confidence.toFixed(1) : '99' }}%)
-                                </div>
-                                <NProgress :percentage="result.confidence || 0" :status="result.confidence > 80 ? 'error' :
-                                    result.confidence > 30 ? 'warning' : 'success'" :show-indicator="false"
-                                    class="confidence-bar" />
                             </div>
                         </div>
                         <p v-if="detectionCard.status === 'error'" class="error-text">
@@ -685,7 +697,17 @@ const viewDetailReport = () => {
     align-items: center;
     justify-content: center;
 }
-
+.preview-area1 {
+    width: 200%;
+    height: 200%;
+    overflow: hidden;
+    border-radius: 8px;
+    position: relative;
+    background-color: var(--n-fill-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
 .preview-placeholder {
     color: var(--n-text-color-3);
     font-size: 14px;
@@ -700,11 +722,22 @@ const viewDetailReport = () => {
     object-fit: contain;
     /* 确保图片等比例缩小 */
 }
+.preview-image1 {
+    max-width: 600px;
+    /* 设置图片的最大宽度 */
+    max-height: 600px;
+    /* 设置图片的最大高度 */
+    display: none;
+    object-fit: contain;
+    /* 确保图片等比例缩小 */
+}
 
 .preview-image.show {
     display: block;
 }
-
+.preview-image1.show {
+    display: block;
+}
 /* 右侧分析结果区域 */
 .result-section {
     flex: 1;

@@ -143,6 +143,7 @@ def get_patient_record():
     print("patient_id",patient_id)
     record = get_patient_records(patient_id)
     return jsonify(record), 200
+
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def catch_all(path):
