@@ -435,6 +435,83 @@ def get_patient_records(patient_id):
         if 'conn' in locals() and conn.is_connected():
             conn.close()
 
+def get_fund_info(fund_id):
+    """
+    根据fund_id查询眼底影像信息
+    
+    参数:
+    fund_id (int): 眼底影像ID
+    
+    返回:
+    dict: 包含眼底影像信息的结构化数据，如果找不到则返回错误信息
+    """
+    try:
+        # 连接数据库
+        conn = mysql.connector.connect(
+            host="113.44.61.230",
+            user="root",
+            password="Ytb@210330!",
+            database="medical_db"
+        )
+        cursor = conn.cursor(dictionary=True)  # 使用字典游标获取结果
+        
+        # 查询影像信息
+        fund_query = """
+        SELECT fund_id, left_fund_keyword, right_fund_keyword, patient_id, left_fund, right_fund
+        FROM fund_info
+        WHERE fund_id = %s
+        """
+        cursor.execute(fund_query, (fund_id,))
+        fund_info = cursor.fetchone()
+        
+        if not fund_info:
+            return {"error": f"眼底影像ID {fund_id} 不存在"}
+        
+        # 如果存在二进制数据，将其转换为base64编码字符串
+        if fund_info['left_fund'] is not None:
+            fund_info['left_fund'] = base64.b64encode(fund_info['left_fund']).decode('utf-8')
+        if fund_info['right_fund'] is not None:
+            fund_info['right_fund'] = base64.b64encode(fund_info['right_fund']).decode('utf-8')
+        
+        # 查询关联的患者信息
+        patient_id = fund_info['patient_id']
+        patient_query = """
+        SELECT patient_id, patient_name, patient_gender, patient_age
+        FROM patient_info
+        WHERE patient_id = %s
+        """
+        cursor.execute(patient_query, (patient_id,))
+        patient_info = cursor.fetchone()
+        
+        # 查询关联的诊断记录
+        records_query = """
+        SELECT r.record_id, r.patient_id, r.fund_id, r.result, r.suggestion, r.diagnosis_date, r.user_id
+        FROM record_info r
+        WHERE r.fund_id = %s
+        ORDER BY r.diagnosis_date DESC
+        """
+        cursor.execute(records_query, (fund_id,))
+        records = cursor.fetchall()
+        
+        # 构建结构化数据
+        result = {
+            'fund': fund_info,
+            'patient': patient_info,
+            'records': records
+        }
+        
+        return result
+        
+    except mysql.connector.Error as err:
+        print(f"数据库错误: {err}")
+        raise
+    finally:
+        # 关闭连接
+        if 'cursor' in locals() and cursor:
+            cursor.close()
+        if 'conn' in locals() and conn.is_connected():
+            conn.close()
+
 if __name__ == "__main__":
     # make_user_info(user_id=1,
     #                user_account="123456",
@@ -459,12 +536,28 @@ if __name__ == "__main__":
     #     print(f"记录ID: {record['record']['record_id']}, 患者: {record['patient']['patient_name']}, 诊断结果: {record['record']['result']}")
     
     # 示例：根据患者ID查询诊断记录
-    patient_records = get_patient_records(1)
-    if "error" in patient_records:
-        print(patient_records["error"])
-    else:
-        patient = patient_records["patient"]
-        records = patient_records["records"]
-        print(f"患者: {patient['patient_id']}, 共有 {len(records)} 条诊断记录")
-        for record in records:
-            print(f"记录ID: {record['record_id']}, 诊断日期: {record['diagnosis_date']}, 诊断结果: {record['result']}")
+    # patient_records = get_patient_records(1)
+    # if "error" in patient_records:
+    #     print(patient_records["error"])
+    # else:
+    #     patient = patient_records["patient"]
+    #     records = patient_records["records"]
+    #     print(f"患者: {patient['patient_id']}, 共有 {len(records)} 条诊断记录")
+    #     for record in records:
+    #         print(f"记录ID: {record['record_id']}, 诊断日期: {record['diagnosis_date']}, 诊断结果: {record['result']}")
+    
+    # 示例：根据影像ID查询眼底影像信息
+    # fund_info = get_fund_info(1)
+    # if "error" in fund_info:
+    #     print(fund_info["error"])
+    # else:
+    #     fund = fund_info["fund"]
+    #     patient = fund_info["patient"]
+    #     records = fund_info["records"]
+    #     print(f"影像ID: {fund['fund_id']}, 患者: {patient['patient_name']}, 左眼关键词: {fund['left_fund_keyword']}, 右眼关键词: {fund['right_fund_keyword']}")
+    #     print(f"关联诊断记录数: {len(records)}")
+    #     if len(records) > 0:
+    #         for record in records:
+    #             print(f"记录ID: {record['record_id']}, 诊断日期: {record['diagnosis_date']}, 诊断结果: {record['result']}")
+    data = get_fund_info(33)
+    print(data['records'])
