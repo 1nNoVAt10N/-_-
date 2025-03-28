@@ -63,20 +63,23 @@ axios.post('http://127.0.0.1:5000/get_patient_record', { id: diagnosisId }).then
 }).catch(err => {
     console.log('err:', err);
 })
-const viewHistoryDetail = (patientId: string) => {
-    router.push(`/fund/${patientId}`)
+const viewHistoryDetail = (fund_id: number) => {
+    router.push(`/fund/${fund_id}`)
 }
+const goBack = () => {
+        router.go(-1)
+    }
 </script>
 
 <template>
     <div class="diagnosis-detail">
-        <!-- 面包屑导航 -->
-        <div class="breadcrumb">
-            <router-link to="/">首页</router-link> <i class="fas fa-angle-right"></i>
-            <router-link to="/diagnosis">诊断管理</router-link> <i class="fas fa-angle-right"></i>
-            诊断详情
-        </div>
-    </div>
+        <NPageHeader title="病人病例" @back="goBack">
+            <template #avatar>
+                <NIcon>
+                    <MedicalOutline />
+                </NIcon>
+            </template>
+        </NPageHeader>
     <!-- 历史记录区域 -->
     <div class="history-section">
         <h2 class="section-title">
@@ -88,13 +91,13 @@ const viewHistoryDetail = (patientId: string) => {
         <!-- 历史记录列表 -->
         <ul class="history-list">
             <li v-for="record in historyRecords" :key="record.patient_id" class="history-item"
-                @click="viewHistoryDetail(record.patient_id)">
+                @click="viewHistoryDetail(record.fund_id)">
                 <div class="history-thumbnail">
                     <NImage :src="'data:image/jpeg;base64,'+record.fund_info.left_fund" alt="左眼眼底图像" />
                     <NImage :src="'data:image/jpeg;base64,'+record.fund_info.right_fund" alt="右眼眼底图像" />
                 </div>
                 <div class="history-info">
-                    <div class="history-title">Fund_ID: {{ record.fund_id }}</div>
+                    <div class="history-title">病例ID: {{ record.fund_id }}</div>
                     <div class="history-meta">
                         <div class="history-meta-item">
                             <NIcon size="14" class="mr-1">
@@ -112,6 +115,7 @@ const viewHistoryDetail = (patientId: string) => {
                 <NTag type="success" size="small">已完成</NTag>
             </li>
         </ul>
+    </div>
     </div>
 </template>
 

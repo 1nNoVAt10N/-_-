@@ -9,7 +9,8 @@ import matplotlib.pyplot as plt
 import base64
 from io import BytesIO
 from cut_blend import cut_blend
-from sql_APIs import get_patient_records 
+from sql_APIs import get_patient_records , get_recent_records , get_fund_info
+from diagnostic_report_generator import create_diagnostic_pdf
 
 app = Flask(__name__, static_folder='./frontend/dist')
 CORS(app)  # Enable CORS on all routes
@@ -143,6 +144,25 @@ def get_patient_record():
     print("patient_id",patient_id)
     record = get_patient_records(patient_id)
     return jsonify(record), 200
+@app.route('/get_recent_record', methods=['POST'])
+def get_recent_record():
+    print("get_recent_record",request.get_json())
+    limit = request.get_json()['limit']
+    record = get_recent_records(limit)
+    return jsonify(record), 200
+@app.route('/get_fund_infoX', methods=['POST'])
+def get_fund_infoX():
+    print("get_fund_info",request.get_json())
+    fund_id = request.get_json()['fund_id']
+    print("fund_id",fund_id)
+    record = get_fund_info(fund_id)
+    return jsonify(record), 200
+@app.route('/create_pdf', methods=['POST'])
+def create_pdf():
+    print("create_pdf",request.get_json())
+    pdf_data = request.get_json()
+    create_diagnostic_pdf(pdf_data['data'])
+    return jsonify({"success":True}), 200
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')

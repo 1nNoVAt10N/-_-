@@ -311,22 +311,21 @@ const viewDetailReport = () => {
 
     router.push(`/diagnosis/${patientId.value}?type=new`);
 };
+const goBack = () => {
+    router.go(-1);
+};
 </script>
 
 <template>
     <div class="diagnosis-page">
         <!-- 面包屑导航 -->
-        <div class="breadcrumb">
-            <router-link to="/">首页</router-link> <i class="fas fa-angle-right"></i>
-            <router-link to="/diagnosis">诊断管理</router-link>
-            <i class="fas fa-angle-right"></i> 眼底诊断
-        </div>
-        <h1 class="page-title">
-            <NIcon size="24" class="mr-2">
-                <EyeOutline />
-            </NIcon>
-            眼底影像智能诊断
-        </h1>
+        <NPageHeader title="眼底影像智能诊断" @back="goBack">
+            <template #avatar>
+                <NIcon size="24" class="mr-2">
+                    <EyeOutline />
+                </NIcon>
+            </template>
+        </NPageHeader>
 
         <div class="diagnosis-container">
             <!-- 左侧上传和预览区域 -->
