@@ -79,8 +79,6 @@
             console.log('res:', res);
             patient_fund.value = res.data
             loading.value = false
-            patient_fund.value.left_eye_image = 'data:image/jpeg;base64,'+patient_fund.value.left_eye_image
-            patient_fund.value.right_eye_image = 'data:image/jpeg;base64,'+patient_fund.value.right_eye_image
         }).catch(err => {
             console.log('err:', err);
             message.error('获取病例信息失败')
@@ -94,6 +92,8 @@
 
     const summonPDF = () => {
         submitting.value = true
+        patient_fund.value.patient_age = patient_fund.value.patient_age.toString()
+        patient_fund.value.patient_id = patient_fund.value.patient_id.toString()
         axios.post('http://127.0.0.1:5000/create_pdf', {
             data: patient_fund.value
         }, {
@@ -201,7 +201,7 @@
                                 <div class="eye-image-container">
                                     <NImage 
                                         v-if="patient_fund.left_eye_image" 
-                                        :src="patient_fund.left_eye_image" 
+                                        :src="'data:image/jpeg;base64,'+patient_fund.left_eye_image" 
                                         object-fit="contain"
                                         :preview-disabled="false"
                                         width="100%"
@@ -223,7 +223,7 @@
                                 <div class="eye-image-container">
                                     <NImage 
                                         v-if="patient_fund.right_eye_image" 
-                                        :src="patient_fund.right_eye_image" 
+                                        :src="'data:image/jpeg;base64,'+patient_fund.right_eye_image" 
                                         object-fit="contain"
                                         :preview-disabled="false"
                                         width="100%"

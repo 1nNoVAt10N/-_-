@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_from_directory, abort
+from flask import Flask, request, jsonify, send_from_directory, abort, send_file
 from flask_cors import CORS
 import shutil
 from predict import Predict
@@ -162,8 +162,13 @@ def get_fund_infoX():
 def create_pdf():
     print("create_pdf",request.get_json())
     pdf_data = request.get_json()
-    create_diagnostic_pdf(pdf_data['data'])
-    return jsonify({"success":True}), 200
+    pdf_file=create_diagnostic_pdf(pdf_data['data'])
+    return send_file(
+            pdf_file,
+            as_attachment=True,
+            download_name="diagnostic_report.pdf",
+            mimetype='application/pdf'
+        )
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
