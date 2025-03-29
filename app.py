@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_from_directory, abort
+from flask import Flask, request, jsonify, send_from_directory, abort, send_file
 from flask_cors import CORS
 import shutil
 from predict import Predict
@@ -10,7 +10,7 @@ import base64
 from io import BytesIO
 from cut_blend import cut_blend
 from sql_APIs import get_patient_records , get_recent_records , get_fund_info
-from diagnostic_report_generator import create_diagnostic_pdf
+from diagnostic_report_generator import create_diagnostic_pdf,make_styles_data
 
 app = Flask(__name__, static_folder='./frontend/dist')
 CORS(app)  # Enable CORS on all routes
@@ -156,13 +156,19 @@ def get_fund_infoX():
     fund_id = request.get_json()['fund_id']
     print("fund_id",fund_id)
     record = get_fund_info(fund_id)
-    return jsonify(record), 200
+    result=make_styles_data(record)
+    return jsonify(result), 200
 @app.route('/create_pdf', methods=['POST'])
 def create_pdf():
     print("create_pdf",request.get_json())
     pdf_data = request.get_json()
-    create_diagnostic_pdf(pdf_data['data'])
-    return jsonify({"success":True}), 200
+    pdf_file=create_diagnostic_pdf(pdf_data['data'])
+    return send_file(
+            pdf_file,
+            as_attachment=True,
+            download_name="diagnostic_report.pdf",
+            mimetype='application/pdf'
+        )
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')

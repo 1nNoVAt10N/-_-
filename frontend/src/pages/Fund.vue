@@ -27,78 +27,58 @@
     const pdfUrl = ref('')
     const showPdfModal = ref(false)
     
-    class fund {
-        fund_id: string
-        left_fund: string
-        left_fund_keyword: string
-        right_fund: string
-        right_fund_keyword: string
-        patient_id: string
-        constructor(fund_id: string, left_fund: string, left_fund_keyword: string, right_fund: string, right_fund_keyword: string, patient_id: string) {
-            this.fund_id = fund_id
-            this.left_fund = left_fund
-            this.left_fund_keyword = left_fund_keyword
-            this.right_fund = right_fund
-            this.right_fund_keyword = right_fund_keyword
-            this.patient_id = patient_id
-        }
-    }
-
-    class patient{
-        patient_id: string
-        patient_name: string
+    class Fund {
+        diagnosis: string
+        doctor_name: string
+        examinations: string
+        left_eye_image: string
+        left_eye_keywords: string
+        medication: string
         patient_age: string
         patient_gender: string
-        constructor(patient_id: string,patient_name: string,    patient_age:string , patient_gender: string){
-            this.patient_id = patient_id
-            this.patient_name = patient_name
+        patient_id: string
+        patient_name: string
+        precautions: string
+        right_eye_image: string
+        right_eye_keywords: string
+        constructor(diagnosis: string,
+        doctor_name: string,
+        examinations: string,
+        left_eye_image: string,
+        left_eye_keywords: string,
+        medication: string,
+        patient_age: string,
+        patient_gender: string,
+        patient_id: string,
+        patient_name: string,
+        precautions: string,
+        right_eye_image: string,
+        right_eye_keywords: string){
+            this.diagnosis = diagnosis
+            this.doctor_name = doctor_name
+            this.examinations = examinations
+            this.left_eye_image = left_eye_image
+            this.left_eye_keywords = left_eye_keywords
+            this.medication = medication
             this.patient_age = patient_age
             this.patient_gender = patient_gender
-        }
-    }
-
-    class record {
-        diagnosis_date: string
-        fund_id: string
-        patient_id: string
-        record_id: string
-        result: string
-        suggestion: string
-        user_id : string
-        constructor(diagnosis_date: string, fund_id: string,  patient_id: string, record_id: string, result: string, suggestion: string, user_id: string) {
-            this.diagnosis_date = diagnosis_date
-            this.fund_id = fund_id
             this.patient_id = patient_id
-            this.record_id = record_id
-            this.result = result
-            this.suggestion = suggestion
-            this.user_id = user_id
-        }
-    }
-    class Fund {
-        fund: fund
-        patient: patient
-        record: record
-        constructor(fund: fund, patient: patient, record: record) {
-            this.fund = fund
-            this.patient = patient
-            this.record = record
+            this.patient_name = patient_name
+            this.precautions = precautions
+            this.right_eye_image = right_eye_image
+            this.right_eye_keywords = right_eye_keywords
         }
     }
     const doctor_name = ref('张医生')
-    const patient_fund = ref<Fund>(new Fund(new fund('', '', '', '', '', ''), new patient('', '', '', ''), new record('', '', '', '', '', '', '')))
+    const patient_fund = ref<Fund>(new Fund('', '', '', '', '', '','', '', '', '', '', '', ''))
     onMounted(() => { 
         const FundId = route.params.id
         console.log('FundId:', FundId);
         loading.value = true
         axios.post('http://127.0.0.1:5000/get_fund_infoX', { fund_id: FundId }).then(res => {
             console.log('res:', res);
-            patient_fund.value.fund = res.data.fund
-            patient_fund.value.patient = res.data.patient
-            patient_fund.value.record = res.data.records[0]
+            patient_fund.value = res.data
             loading.value = false
-            patient_fund.value.fund.left_fund = 'data:image/jpeg;base64,'+patient_fund.value.fund.left_fund
-            patient_fund.value.fund.right_fund = 'data:image/jpeg;base64,'+patient_fund.value.fund.right_fund
         }).catch(err => {
             console.log('err:', err);
             message.error('获取病例信息失败')
@@ -112,20 +92,10 @@
 
     const summonPDF = () => {
         submitting.value = true
+        patient_fund.value.patient_age = patient_fund.value.patient_age.toString()
+        patient_fund.value.patient_id = patient_fund.value.patient_id.toString()
         axios.post('http://127.0.0.1:5000/create_pdf', {
-            data:{
-                doctor_name: doctor_name.value,
-                patient_id: patient_fund.value.patient.patient_id,
-                patient_name: patient_fund.value.patient.patient_name,
-                patient_age: patient_fund.value.patient.patient_age,
-                patient_gender: patient_fund.value.patient.patient_gender,
-                left_eye_keywords: patient_fund.value.fund.left_fund_keyword,
-                right_eye_keywords: patient_fund.value.fund.right_fund_keyword,
-                left_eye_image: patient_fund.value.fund.left_fund,
-                right_eye_image: patient_fund.value.fund.right_fund,
-                diagnosis: patient_fund.value.record.result,
-                medication: patient_fund.value.record.suggestion,
-            }
+            data: patient_fund.value
         }, {
             responseType: 'blob' // 重要：设置响应类型为blob
         }).then(res => {
@@ -149,7 +119,7 @@
         if (isPdfReady.value) {
             const link = document.createElement('a')
             link.href = pdfUrl.value
-            link.download = `${patient_fund.value.patient.patient_name}_病例报告.pdf`
+            link.download = `${patient_fund.value.patient_id}_病例报告.pdf`
             document.body.appendChild(link)
             link.click()
             document.body.removeChild(link)
@@ -198,22 +168,22 @@
                     <NGrid :cols="24" :x-gap="24">
                         <NGridItem :span="8">
                             <NFormItem label="患者ID">
-                                <NInput v-model:value="patient_fund.patient.patient_id" placeholder="请输入患者ID" />
+                                <NInput v-model:value="patient_fund.patient_id" placeholder="请输入患者ID" />
                             </NFormItem>
                         </NGridItem>
                         <NGridItem :span="8">
                             <NFormItem label="患者姓名">
-                                <NInput v-model:value="patient_fund.patient.patient_name" placeholder="请输入患者姓名" />
+                                <NInput v-model:value="patient_fund.patient_name" placeholder="请输入患者姓名" />
                             </NFormItem>
                         </NGridItem>
                         <NGridItem :span="4">
                             <NFormItem label="患者年龄">
-                                <NInput v-model:value="patient_fund.patient.patient_age" placeholder="年龄" />
+                                <NInput v-model:value="patient_fund.patient_age" placeholder="年龄" />
                             </NFormItem>
                         </NGridItem>
                         <NGridItem :span="4">
                             <NFormItem label="患者性别">
-                                <NRadioGroup v-model:value="patient_fund.patient.patient_gender">
+                                <NRadioGroup v-model:value="patient_fund.patient_gender">
                                     <NRadio value="Male">男</NRadio>
                                     <NRadio value="Female">女</NRadio>
                                 </NRadioGroup>
@@ -230,8 +200,8 @@
                             <NCard title="左眼" embedded>
                                 <div class="eye-image-container">
                                     <NImage 
-                                        v-if="patient_fund.fund.left_fund" 
-                                        :src="patient_fund.fund.left_fund" 
+                                        v-if="patient_fund.left_eye_image" 
+                                        :src="'data:image/jpeg;base64,'+patient_fund.left_eye_image" 
                                         object-fit="contain"
                                         :preview-disabled="false"
                                         width="100%"
@@ -240,7 +210,7 @@
                                 </div>
                                 <NFormItem label="左眼诊断关键词">
                                     <NInput
-                                        v-model:value="patient_fund.fund.left_fund_keyword" 
+                                        v-model:value="patient_fund.left_eye_keywords" 
                                         placeholder="请输入左眼诊断关键词"
                                         type="textarea"
                                         :autosize="{ minRows: 2, maxRows: 5 }"
@@ -252,8 +222,8 @@
                             <NCard title="右眼" embedded>
                                 <div class="eye-image-container">
                                     <NImage 
-                                        v-if="patient_fund.fund.right_fund" 
-                                        :src="patient_fund.fund.right_fund" 
+                                        v-if="patient_fund.right_eye_image" 
+                                        :src="'data:image/jpeg;base64,'+patient_fund.right_eye_image" 
                                         object-fit="contain"
                                         :preview-disabled="false"
                                         width="100%"
@@ -262,7 +232,7 @@
                                 </div>
                                 <NFormItem label="右眼诊断关键词">
                                     <NInput 
-                                        v-model:value="patient_fund.fund.right_fund_keyword" 
+                                        v-model:value="patient_fund.right_eye_keywords" 
                                         placeholder="请输入右眼诊断关键词"
                                         type="textarea"
                                         :autosize="{ minRows: 2, maxRows: 5 }"
@@ -287,18 +257,9 @@
                             </NFormItem>
                         </NGridItem>
                         <NGridItem :span="24">
-                            <NFormItem label="诊断日期">
-                                <NInput 
-                                    v-model:value="patient_fund.record.diagnosis_date" 
-                                    type="text"
-                                    placeholder="请输入诊断日期（YYYY-MM-DD）"
-                                />
-                            </NFormItem>
-                        </NGridItem>
-                        <NGridItem :span="24">
                             <NFormItem label="诊断结果">
                                 <NInput 
-                                    v-model:value="patient_fund.record.result" 
+                                    v-model:value="patient_fund.diagnosis" 
                                     placeholder="请输入诊断结果"
                                     type="textarea"
                                     :autosize="{ minRows: 3, maxRows: 6 }"
@@ -306,10 +267,30 @@
                             </NFormItem>
                         </NGridItem>
                         <NGridItem :span="24">
-                            <NFormItem label="治疗建议">
+                            <NFormItem label="检查建议">
                                 <NInput 
-                                    v-model:value="patient_fund.record.suggestion" 
-                                    placeholder="请输入治疗建议、用药建议等"
+                                    v-model:value="patient_fund.examinations" 
+                                    placeholder="请输入检查建议"
+                                    type="textarea"
+                                    :autosize="{ minRows: 10, maxRows: 20 }"
+                                />
+                            </NFormItem>
+                        </NGridItem>
+                        <NGridItem :span="24">
+                            <NFormItem label="用药建议">
+                                <NInput 
+                                    v-model:value="patient_fund.medication"
+                                    placeholder="请输入用药建议"
+                                    type="textarea"
+                                    :autosize="{ minRows: 10, maxRows: 20 }"
+                                />
+                            </NFormItem>
+                        </NGridItem>
+                        <NGridItem :span="24">
+                            <NFormItem label="预防措施">
+                                <NInput 
+                                    v-model:value="patient_fund.precautions"
+                                    placeholder="请输入预防措施"
                                     type="textarea"
                                     :autosize="{ minRows: 10, maxRows: 20 }"
                                 />
