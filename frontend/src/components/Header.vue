@@ -9,7 +9,7 @@
   const message = useMessage();
   const router = useRouter();
   const startButton1 = () => {
-    router.push('/singleRecognition');
+    router.push('/diagnosis');
   };
   const startButton2 = () => {
     router.push('/multiRecognition');

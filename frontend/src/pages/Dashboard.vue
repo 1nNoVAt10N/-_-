@@ -32,7 +32,7 @@ const functionCards = [
     icon: EyeOutline,
     title: '单眼诊断',
     description: '针对单张眼底图像的智能诊断分析',
-    route: '/singleRecognition',
+    route: '/diagnosis',
     color: '#409EFF'
   },
   {
@@ -200,7 +200,7 @@ onMounted(() => {
           <NButton
             type="primary"
             size="large"
-            @click="router.push('/singleRecognition')"
+            @click="router.push('/diagnosis')"
           >
             <template #icon>
               <NIcon><EyeOutline /></NIcon>

@@ -12,6 +12,7 @@ import MedicalRecords from './pages/MedicalRecords.vue';
 import Fund from './pages/Fund.vue';
 import Dashboard from './pages/Dashboard.vue';
 import Login from './pages/Login.vue';
+import MultiModalDiagnosis from './pages/MultiModalDiagnosis.vue';
 
 // Set up the routes
 const routes = [
@@ -19,7 +20,7 @@ const routes = [
   { path: '/login', component: Login },
   { path: '/dashboard', component: Dashboard },
   { path: '/singleRecognition', component: Recognition },
-  { path: '/multiRecognition', component: Recognition1 },
+  { path: '/multiRecognition', component: MultiModalDiagnosis },
   { path: '/diagnosis', component: Diagnosis },
   { path: '/diagnosis/:id', component: DiagnosisList },
   {path: '/medical-records', component: MedicalRecords},
