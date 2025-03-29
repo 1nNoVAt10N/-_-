@@ -10,7 +10,7 @@ import base64
 from io import BytesIO
 from cut_blend import cut_blend
 from sql_APIs import get_patient_records , get_recent_records , get_fund_info
-from diagnostic_report_generator import create_diagnostic_pdf
+from diagnostic_report_generator import create_diagnostic_pdf,make_styles_data
 
 app = Flask(__name__, static_folder='./frontend/dist')
 CORS(app)  # Enable CORS on all routes
@@ -156,7 +156,8 @@ def get_fund_infoX():
     fund_id = request.get_json()['fund_id']
     print("fund_id",fund_id)
     record = get_fund_info(fund_id)
-    return jsonify(record), 200
+    result=make_styles_data(record)
+    return jsonify(result), 200
 @app.route('/create_pdf', methods=['POST'])
 def create_pdf():
     print("create_pdf",request.get_json())
