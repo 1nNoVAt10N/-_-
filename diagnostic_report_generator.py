@@ -13,7 +13,7 @@ from PIL import Image as PILImage
 import base64
 from datetime import datetime
 import tempfile
-
+from predict import parse_medical_record
 # 尝试注册中文字体
 font_registered = False
 default_font_name = 'Helvetica'
@@ -509,6 +509,43 @@ def encode_image(image_path):
             return base64.b64encode(image_file.read()).decode('utf-8')
     except Exception as e:
         raise ValueError(f"图片编码失败: {str(e)}")
+    
+def make_styles_data(dic_data):
+    patient_id = dic_data['patient']['patient_id']
+    patient_name = dic_data['patient']['patient_name']
+    patient_age = dic_data['patient']['patient_age']
+    patient_gender = dic_data['patient']['patient_gender']
+    left_eye_keywords = dic_data['fund']['left_fund_keyword']
+    right_eye_keywords = dic_data['fund']['right_fund_keyword']
+    left_eye = dic_data['fund']['left_fund']
+    right_eye = dic_data['fund']['right_fund']
+    diagnosis = dic_data['records'][0]['result'][:-1]
+    suggest = dic_data['records'][0]['suggestion']
+    suggest_dic = parse_medical_record(suggest)
+    examinations = suggest_dic['建议检查项目']
+    precautions = suggest_dic['注意事项']
+    medication = suggest_dic['建议用药']
+    doctor_name = "李医生"
+
+    styles_data = {
+        "patient_id": patient_id,
+        "patient_name": patient_name, 
+        "patient_age": patient_age,
+        "patient_gender": patient_gender,
+        "left_eye_keywords": left_eye_keywords,
+        "right_eye_keywords": right_eye_keywords,
+        "left_eye_image": left_eye,
+        "right_eye_image": right_eye,
+        "diagnosis": diagnosis,
+        "medication": medication,
+        "examinations": examinations,
+        "precautions": precautions,
+        "doctor_name": doctor_name
+
+    }
+
+    return styles_data
+    
 
 # 示例用法
 if __name__ == "__main__":

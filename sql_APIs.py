@@ -1,5 +1,6 @@
 import mysql.connector
 from datetime import datetime
+
 import base64
 def make_user_info(
         user_id=None,
@@ -561,3 +562,4 @@ if __name__ == "__main__":
     #             print(f"记录ID: {record['record_id']}, 诊断日期: {record['diagnosis_date']}, 诊断结果: {record['result']}")
     data = get_fund_info(33)
     print(data['records'])
+    
