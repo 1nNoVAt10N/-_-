@@ -272,7 +272,7 @@
                                     v-model:value="patient_fund.examinations" 
                                     placeholder="请输入检查建议"
                                     type="textarea"
-                                    :autosize="{ minRows: 10, maxRows: 20 }"
+                                    :autosize="{ minRows: 3, maxRows: 6 }"
                                 />
                             </NFormItem>
                         </NGridItem>
@@ -282,7 +282,7 @@
                                     v-model:value="patient_fund.medication"
                                     placeholder="请输入用药建议"
                                     type="textarea"
-                                    :autosize="{ minRows: 10, maxRows: 20 }"
+                                    :autosize="{ minRows: 3, maxRows: 6 }"
                                 />
                             </NFormItem>
                         </NGridItem>
@@ -292,7 +292,7 @@
                                     v-model:value="patient_fund.precautions"
                                     placeholder="请输入预防措施"
                                     type="textarea"
-                                    :autosize="{ minRows: 10, maxRows: 20 }"
+                                    :autosize="{ minRows: 3, maxRows: 6 }"
                                 />
                             </NFormItem>
                         </NGridItem>

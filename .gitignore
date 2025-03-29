@@ -1,5 +1,5 @@
 temp_cache/
-
+temp_images/
 .venv/
 final_model_state_dict_with_gate.pth
 best_model_state_dict_with_gate.pth

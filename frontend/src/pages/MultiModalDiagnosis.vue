@@ -291,42 +291,43 @@ const startAnalysis = async () => {
                 const recordData = value;
                 
                 // 创建模型实例
-                if (recordData.predictions && recordData.record_id && recordData.fund_id) {
-                    const patientInfo = patientData.value.find((p: any) => p.patient_id === recordData.patient_id);
+                if (recordData.fund_id && recordData.record_id) {
+                    // 创建患者记录 - 使用默认值，因为JSON中没有患者信息
+                    const patient = new Patient(
+                        `patient_${recordData.fund_id}`,
+                        '未知',
+                        0,
+                        '未知'
+                    );
                     
-                    if (patientInfo) {
-                        // 创建患者记录
-                        const patient = new Patient(
-                            patientInfo.patient_id,
-                            patientInfo.patient_name || '未知',
-                            patientInfo.patient_age || 0,
-                            patientInfo.patient_gender || '未知'
-                        );
-                        
-                        // 创建基金记录
-                        const fund = new Fund(
-                            recordData.fund_id,
-                            recordData.images?.left_eye || '',
-                            recordData.predictions[0]?.left_eye_keyword || '',
-                            recordData.images?.right_eye || '',
-                            recordData.predictions[0]?.right_eye_keyword || '',
-                            patientInfo.patient_id
-                        );
-                        
-                        // 创建诊断记录
-                        const record = new Record(
-                            Date.now(),
-                            recordData.fund_id,
-                            patientInfo.patient_id,
-                            recordData.record_id,
-                            recordData.predictions[0]?.disease_name || '未知',
-                            recordData.predictions[0]?.recommendations?.join(', ') || '无',
-                            'current_user'
-                        );
-                        
-                        // 添加到结果列表
-                        processedResults.push(new BatchRecord(fund, patient, record));
-                    }
+                    // 创建基金记录
+                    const fund = new Fund(
+                        recordData.fund_id.toString(),
+                        '', // 左眼图像暂无
+                        '',
+                        '', // 右眼图像暂无
+                        '',
+                        `patient_${recordData.fund_id}`
+                    );
+                    
+                    // 处理预测结果
+                    const predictions = Array.isArray(recordData.predictions) 
+                        ? recordData.predictions.join(', ') 
+                        : '未知';
+                    
+                    // 创建诊断记录
+                    const record = new Record(
+                        Date.now(),
+                        recordData.fund_id.toString(),
+                        `patient_${recordData.fund_id}`,
+                        recordData.record_id.toString(),
+                        predictions,
+                        '请进一步咨询医生',
+                        'current_user'
+                    );
+                    
+                    // 添加到结果列表
+                    processedResults.push(new BatchRecord(fund, patient, record));
                 }
             });
             
@@ -409,6 +410,11 @@ const viewDetailReport = () => {
     } else {
         message.warning('没有可查看的报告');
     }
+};
+
+// 跳转到基金详情页面
+const viewHistoryDetail = (fundId: string) => {
+    router.push(`/fund/${fundId}`);
 };
 
 // 导出所有分析结果
@@ -550,17 +556,19 @@ const goBack = () => {
 
                     <!-- 表格数据预览 -->
                     <div v-if="patientData.length > 0" class="excel-preview">
-                        <h4>患者数据预览 ({{ patientData.length }}条记录)</h4>
+                        <h4>患者数据预览 <span class="record-count">({{ patientData.length }}条记录)</span></h4>
                         <div class="table-container">
                             <table>
                                 <thead>
                                     <tr>
-                                        <th v-for="header in patientDataHeaders" :key="header">{{ header }}</th>
+                                        <th v-for="header in patientDataHeaders" :key="header" class="table-header">
+                                            {{ header }}
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr v-for="(row, index) in patientData.slice(0, 5)" :key="index">
-                                        <td v-for="header in patientDataHeaders" :key="`${index}-${header}`">
+                                        <td v-for="header in patientDataHeaders" :key="`${index}-${header}`" class="table-cell">
                                             {{ row[header] }}
                                         </td>
                                     </tr>
@@ -570,61 +578,10 @@ const goBack = () => {
                                 显示前5条数据，共{{ patientData.length }}条
                             </div>
                         </div>
+                        <div class="scroll-hint">← 左右滑动查看全部数据 →</div>
                     </div>
                 </NCard>
 
-                <!-- 分析结果列表 -->
-                <NCard v-if="detectionCard.status === 'completed' && batchResults.length > 0" class="analysis-card results-card">
-                    <h3 class="eye-title">
-                        <NIcon size="18" class="mr-2">
-                            <ListOutline />
-                        </NIcon>
-                        批量分析结果 ({{ batchResults.length }}条记录)
-                    </h3>
-                    
-                    <!-- 批量结果列表 -->
-                    <ul class="batch-results-list">
-                        <li v-for="(record, index) in paginatedResults" :key="record.record.record_id" 
-                            class="batch-result-item"
-                            @click="viewRecordDetail(record)">
-                            <div class="result-index">{{ (currentPage - 1) * pageSize + index + 1 }}</div>
-                            <div class="result-info">
-                                <div class="result-title">
-                                    <span class="patient-id">患者ID: {{ record.patient.patient_id }}</span>
-                                    <span class="patient-name">{{ record.patient.patient_name }}</span>
-                                </div>
-                                <div class="result-detail">
-                                    <span>{{ record.patient.patient_gender }}, {{ record.patient.patient_age }}岁</span>
-                                    <span>记录ID: {{ record.record.record_id }}</span>
-                                </div>
-                            </div>
-                            <NTag type="success" size="small">已分析</NTag>
-                        </li>
-                    </ul>
-                    
-                    <!-- 分页控件 -->
-                    <div class="pagination-container" v-if="batchResults.length > pageSize">
-                        <NPagination 
-                            v-model:page="currentPage"
-                            :page-count="totalPages"
-                            :page-sizes="[5, 10, 20]"
-                            :page-size="pageSize"
-                            @update:page="handlePageChange"
-                        />
-                    </div>
-                    
-                    <!-- 导出按钮 -->
-                    <div class="export-container">
-                        <NButton type="info" @click="exportResults" class="export-button">
-                            <template #icon>
-                                <NIcon>
-                                    <PrintOutline />
-                                </NIcon>
-                            </template>
-                            导出全部结果
-                        </NButton>
-                    </div>
-                </NCard>
             </div>
 
             <!-- 右侧分析结果区域 -->
@@ -661,23 +618,22 @@ const goBack = () => {
                             }}
                         </p>
                         <div v-if="detectionCard.status === 'completed'" class="result-container">
-                            <div v-for="(result, index) in detectionCard.results" :key="index" class="result-item">
-                                <div class="result-label">检测项目 {{ index + 1 }}:</div>
-                                <div :class="['result-value', result.isPositive ? 'positive' : 'negative']">
-                                    {{ result.name }}
-                                    <NTag :type="result.isPositive ? 'error' : 'success'" class="ml-2">
-                                        {{ result.isPositive ? '阳性' : '阴性' }}
-                                    </NTag>
+                            <h3 class="summary-title">批量检测结果摘要</h3>
+                            <div class="batch-results-summary">
+                                <div class="summary-item">
+                                    <div class="summary-label">总记录:</div>
+                                    <div class="summary-value">{{ batchResults.length }}</div>
                                 </div>
-                                <div class="confidence-bar">
-                                    <NProgress
-                                        :percentage="result.confidence"
-                                        :color="result.isPositive ? '#ff4d4f' : '#52c41a'"
-                                        :height="8"
-                                    />
-                                    <div class="confidence-text">置信度: {{ result.confidence }}%</div>
+                                <div class="summary-item">
+                                    <div class="summary-label">正常:</div>
+                                    <div class="summary-value">{{ batchResults.filter((r: BatchRecord) => r.record.result.includes('正常')).length }}</div>
+                                </div>
+                                <div class="summary-item">
+                                    <div class="summary-label">异常:</div>
+                                    <div class="summary-value">{{ batchResults.filter((r: BatchRecord) => !r.record.result.includes('正常')).length }}</div>
                                 </div>
                             </div>
+                            <p class="batch-instruction">请查看下方"批量分析结果"区域了解详情</p>
                         </div>
                         <p v-if="detectionCard.status === 'error'" class="error-text">
                             分析时发生错误，请重试
@@ -691,13 +647,15 @@ const goBack = () => {
                         <div class="card-header">
                             <div class="card-title">
                                 <NIcon size="20" class="mr-2">
-                                    <MedicalOutline />
+                                    <ListOutline />
                                 </NIcon>
-                                诊断建议
+                                批量分析结果
+                                <span v-if="batchResults.length > 0" class="record-count">({{ batchResults.length }}条)</span>
                             </div>
                             <NTag :type="diagnosisCard.status === 'completed' ? 'success' :
                                 diagnosisCard.status === 'analyzing' ? 'warning' :
-                                    diagnosisCard.status === 'error' ? 'error' : 'info'">
+                                    diagnosisCard.status === 'error' ? 'error' : 'info'"
+                                size="small">
                                 {{ diagnosisCard.statusText }}
                             </NTag>
                         </div>
@@ -705,24 +663,37 @@ const goBack = () => {
                     <div class="card-content">
                         <p v-if="diagnosisCard.status === 'waiting' || diagnosisCard.status === 'analyzing'"
                             class="placeholder-text">
-                            {{ diagnosisCard.status === 'waiting' ? '分析完成后将显示诊断建议' : '正在生成诊断建议，请稍候...' }}
+                            {{ diagnosisCard.status === 'waiting' ? '分析完成后将显示结果' : '正在生成结果，请稍候...' }}
                         </p>
                         <div v-if="diagnosisCard.status === 'completed'" class="diagnosis-content">
-                            <p>基于AI分析，发现以下问题：</p>
-                            <ol style="margin-left: 20px; margin-top: 10px;">
-                                <li v-for="(problem, index) in diagnosisCard.content.problems" :key="index">
-                                    <span v-html="problem"></span>
-                                </li>
-                            </ol>
-                            <p style="margin-top: 15px;"><strong>建议：</strong></p>
-                            <ul style="margin-left: 20px; margin-top: 5px;">
-                                <li v-for="(rec, index) in diagnosisCard.content.recommendations" :key="index">
-                                    {{ rec }}
-                                </li>
-                            </ul>
+                            <div v-if="batchResults.length > 0" class="batch-results-details">
+                                <ul class="diagnosis-result-list">
+                                    <li v-for="(record, index) in batchResults" :key="record.record.record_id" class="diagnosis-result-item">
+                                        <div class="result-header">
+                                            <span class="result-index">{{ index + 1 }}</span>
+                                            <span class="result-id">记录ID: {{ record.record.record_id }}</span>
+                                            <span class="result-fund">ID: {{ record.fund.fund_id }}</span>
+                                        </div>
+                                        <div class="result-body">
+                                            <div class="result-diagnosis">
+                                                <span class="truncated-text">
+                                                    {{ record.record.result.length > 30 ? record.record.result.slice(0, 30) + '...' : record.record.result }}
+                                                </span>
+                                                <div class="result-tooltip" v-if="record.record.result.length > 30">
+                                                    {{ record.record.result }}
+                                                </div>
+                                            </div>
+                                            <NButton type="primary" size="small" class="view-detail-btn" @click="viewHistoryDetail(record.fund.fund_id)">
+                                                详情
+                                            </NButton>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </div>
+                            <p v-else class="no-results">暂无批量分析结果</p>
                         </div>
                         <p v-if="diagnosisCard.status === 'error'" class="error-text">
-                            诊断建议生成失败，请重试
+                            结果生成失败，请重试
                         </p>
                     </div>
                 </NCard>
@@ -732,10 +703,6 @@ const goBack = () => {
                     <NButton type="primary" size="large" block :disabled="!analyzeBtn || isAnalyzing"
                         @click="startAnalysis()" :loading="isAnalyzing" v-if="!analysisCompleted">
                         {{ isAnalyzing ? '分析中...' : '开始批量分析' }}
-                    </NButton>
-                    
-                    <NButton type="success" size="large" block @click="viewDetailReport()" v-if="analysisCompleted">
-                        查看详细报告
                     </NButton>
                 </div>
             </div>
@@ -872,32 +839,139 @@ const goBack = () => {
 .excel-preview h4 {
     margin-bottom: 10px;
     font-weight: 500;
+    display: flex;
+    align-items: center;
+    font-size: 14px;
+}
+
+.excel-preview .record-count {
+    font-size: 12px;
+    color: var(--n-text-color-3);
+    margin-left: 5px;
+    font-weight: normal;
 }
 
 .table-container {
     border: 1px solid var(--n-border-color);
     border-radius: 4px;
-    overflow: auto;
-    max-height: 300px;
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 250px;
+    margin-bottom: 8px;
+    position: relative;
+    background-image: 
+        linear-gradient(to right, var(--n-card-color), var(--n-card-color)),
+        linear-gradient(to right, var(--n-card-color), var(--n-card-color)),
+        linear-gradient(to right, rgba(0,0,0,.1), rgba(255,255,255,0)),
+        linear-gradient(to left, rgba(0,0,0,.1), rgba(255,255,255,0));
+    background-position: left center, right center, left center, right center;
+    background-repeat: no-repeat;
+    background-color: var(--n-card-color);
+    background-size: 20px 100%, 20px 100%, 10px 100%, 10px 100%;
+    background-attachment: local, local, scroll, scroll;
 }
 
 .table-container table {
-    width: 100%;
+    width: auto;
+    min-width: 100%;
     border-collapse: collapse;
 }
 
-.table-container th {
+.table-header {
     background-color: var(--n-color-primary-fade-1);
-    padding: 8px;
+    padding: 8px 12px;
     text-align: left;
     position: sticky;
     top: 0;
     font-weight: 500;
+    font-size: 12px;
+    z-index: 2;
+    border-bottom: 1px solid var(--n-border-color);
+    white-space: nowrap;
 }
 
-.table-container td {
-    padding: 8px;
+.table-cell {
+    padding: 8px 12px;
     border-bottom: 1px solid var(--n-border-color);
+    font-size: 12px;
+    position: relative;
+    white-space: nowrap;
+}
+
+.table-container::-webkit-scrollbar {
+    height: 6px;
+    width: 6px;
+}
+
+.table-container::-webkit-scrollbar-thumb {
+    background-color: var(--n-scrollbar-color);
+    border-radius: 6px;
+}
+
+.table-container::-webkit-scrollbar-track {
+    background-color: var(--n-scrollbar-track-color);
+    border-radius: 6px;
+}
+
+.scroll-hint {
+    text-align: center;
+    color: var(--n-text-color-3);
+    font-size: 12px;
+    margin-bottom: 15px;
+    opacity: 0.8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+.scroll-hint::before,
+.scroll-hint::after {
+    content: '';
+    width: 16px;
+    height: 1px;
+    background-color: var(--n-text-color-3);
+    display: inline-block;
+}
+
+.tooltip, .header-tooltip {
+    display: none;
+    position: absolute;
+    background-color: var(--n-popover-color);
+    padding: 8px 12px;
+    border-radius: 4px;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    font-size: 12px;
+    top: -5px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-100%);
+    max-width: 300px;
+    word-break: break-all;
+    word-wrap: break-word;
+    white-space: normal;
+    line-height: 1.4;
+    transition: opacity 0.2s ease;
+    color: var(--n-text-color);
+}
+
+.header-tooltip::after, .cell-tooltip::after {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 5px 5px 0;
+    border-style: solid;
+    border-color: var(--n-popover-color) transparent transparent;
+}
+
+.table-header:hover .header-tooltip {
+    display: block;
+}
+
+.table-cell:hover .cell-tooltip {
+    display: block;
 }
 
 .more-data-hint {
@@ -969,10 +1043,17 @@ const goBack = () => {
     color: var(--n-text-color);
 }
 
+.record-count {
+    font-size: 13px;
+    color: var(--n-text-color-3);
+    margin-left: 5px;
+}
+
 .card-content {
     color: var(--n-text-color);
     font-size: 14px;
     line-height: 1.6;
+    margin-top: 5px;
 }
 
 .placeholder-text {
@@ -986,7 +1067,7 @@ const goBack = () => {
 }
 
 .result-container {
-    margin-top: 15px;
+    margin-top: 10px;
 }
 
 .result-item {
@@ -1019,5 +1100,160 @@ const goBack = () => {
 .confidence-bar {
     margin-top: 5px;
     width: 100%;
+}
+
+.batch-results-summary {
+    display: flex;
+    gap: 12px;
+    margin: 10px 0;
+    flex-wrap: wrap;
+}
+
+.summary-item {
+    background-color: var(--n-color-primary-fade-1);
+    padding: 8px 12px;
+    border-radius: 6px;
+    min-width: 80px;
+    flex: 1;
+}
+
+.summary-label {
+    font-size: 12px;
+    color: var(--n-text-color-3);
+    margin-bottom: 3px;
+}
+
+.summary-value {
+    font-size: 18px;
+    font-weight: bold;
+    color: var(--n-primary-color);
+}
+
+.batch-instruction {
+    color: var(--n-text-color-3);
+    font-size: 12px;
+    font-style: italic;
+    margin-top: 8px;
+}
+
+/* 诊断结果列表样式 */
+.diagnosis-result-list {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    max-height: 500px; /* 增加高度 */
+    overflow-y: auto;
+}
+
+.diagnosis-result-item {
+    border: 1px solid var(--n-border-color);
+    border-radius: 6px;
+    margin-bottom: 10px;
+    overflow: hidden;
+}
+
+.result-header {
+    background-color: var(--n-color-primary-fade-1);
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    position: relative; /* 确保在滚动时不会重叠 */
+    z-index: 1;
+}
+
+.result-index {
+    background-color: var(--n-primary-color);
+    color: white;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+.result-id, .result-fund {
+    font-size: 12px;
+    color: var(--n-text-color-3);
+}
+
+.result-body {
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.result-diagnosis {
+    flex: 1;
+    font-size: 13px;
+    position: relative;
+    padding-right: 10px;
+}
+
+.truncated-text {
+    display: inline-block;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.result-tooltip {
+    display: none;
+    position: absolute;
+    background-color: var(--n-popover-color);
+    padding: 8px 12px;
+    border-radius: 4px;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    font-size: 12px;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-bottom: 5px;
+    max-width: 300px;
+    word-break: break-all;
+    word-wrap: break-word;
+    white-space: normal;
+    line-height: 1.4;
+    color: var(--n-text-color);
+}
+
+.result-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 5px 5px 0;
+    border-style: solid;
+    border-color: var(--n-popover-color) transparent transparent;
+}
+
+.result-diagnosis:hover .result-tooltip {
+    display: block;
+}
+
+.view-detail-btn {
+    white-space: nowrap;
+}
+
+.no-results {
+    text-align: center;
+    padding: 20px;
+    color: var(--n-text-color-3);
+}
+
+.summary-title {
+    font-size: 14px;
+    margin-bottom: 10px;
+    font-weight: 500;
 }
 </style>

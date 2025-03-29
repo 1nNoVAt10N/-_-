@@ -169,7 +169,44 @@ def create_pdf():
             download_name="diagnostic_report.pdf",
             mimetype='application/pdf'
         )
+@app.route('/batch_analysis', methods=['POST'])
+def batch_analysis():
+    print("Content-Type:", request.content_type)  # 打印请求的 Content-Type
+    print("create_pdf", request.files)
 
+    # 获取上传的文件
+    images_zip = request.files.get('images_zip')  # 获取名为 'images_zip' 的文件
+    patient_data = request.files.get('patient_data')  # 获取名为 'patient_data' 的文件
+
+    # 打印文件信息
+    print("images_zip:", images_zip.filename if images_zip else "No file uploaded")
+    print("patient_data:", patient_data.filename if patient_data else "No file uploaded")
+
+    if not images_zip or not patient_data:
+        return jsonify({"error": "Missing required files"}), 400
+
+    # 保存文件到临时目录
+    if not os.path.exists("temp"):
+        os.makedirs("temp")
+
+    images_zip_path = os.path.join("temp", images_zip.filename)
+    patient_data_path = os.path.join("temp", patient_data.filename)
+
+    images_zip.save(images_zip_path)
+    patient_data.save(patient_data_path)
+
+    print(f"Saved images_zip to {images_zip_path}")
+    print(f"Saved patient_data to {patient_data_path}")
+
+    # 调用 predictor.predict 方法，传递文件路径
+    results = predictor.predict(imgs=images_zip_path, xlxs=patient_data_path, mode="batch",                    texts={
+                        'left_text':"wrwr",
+                        "right_text":"fwfefwe",
+                    },)
+    # 删除临时文件
+    os.remove(images_zip_path)
+    os.remove(patient_data_path)
+    return jsonify(results), 200
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def catch_all(path):
