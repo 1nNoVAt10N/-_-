@@ -13,6 +13,11 @@ import Fund from './pages/Fund.vue';
 import Dashboard from './pages/Dashboard.vue';
 import Login from './pages/Login.vue';
 import MultiModalDiagnosis from './pages/MultiModalDiagnosis.vue';
+import Billing from './pages/Billing.vue';
+import Chart from './pages/Chart.vue';
+import Network from './pages/Network.vue';
+import Services from './pages/Services.vue';
+import System from './pages/System.vue';
 
 // Set up the routes
 const routes = [
@@ -26,6 +31,11 @@ const routes = [
   {path: '/medical-records', component: MedicalRecords},
   {path: '/fund/:id', component: Fund},
   { path: '/:pathMatch(.*)*', component: NotFound },
+  { path: '/Billing', component: Billing},
+  { path: '/charts', component: Chart},
+  { path: '/services', component: Services},
+  { path: '/network', component: Network},
+  { path: '/system', component: System}
 ];
 
 // Create the router
