@@ -55,7 +55,7 @@
           </n-icon>
         </div>
         <div class="w-full ml-4 text-xl">
-          <n-text> 眼科疾病智能诊断系统 </n-text>
+          <n-text> 智能眼疾医疗诊断平台 </n-text>
         </div>
         <div class="w-full flex justify-end space-x-5">
           <n-dropdown 
