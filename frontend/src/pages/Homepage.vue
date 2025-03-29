@@ -73,7 +73,7 @@ onMounted(() => {
 const router = useRouter();
 
 const startButton1 = () => {
-  router.push('/singleRecognition');
+  router.push('/diagnosis');
 };
 
 const startButton2 = () => {
