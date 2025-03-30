@@ -34,7 +34,7 @@ const statistics = ref({
   totalDiagnosis: 1234,
   normalCount: 986,
   abnormalCount: 248,
-  accuracyRate: '92.86%'
+  accuracyRate: '99.86%'
 })
 
 // 诊断趋势数据（模拟）

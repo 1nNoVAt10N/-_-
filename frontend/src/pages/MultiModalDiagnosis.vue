@@ -557,25 +557,27 @@ const goBack = () => {
                     <!-- 表格数据预览 -->
                     <div v-if="patientData.length > 0" class="excel-preview">
                         <h4>患者数据预览 <span class="record-count">({{ patientData.length }}条记录)</span></h4>
-                        <div class="table-container">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th v-for="header in patientDataHeaders" :key="header" class="table-header">
-                                            {{ header }}
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr v-for="(row, index) in patientData.slice(0, 5)" :key="index">
-                                        <td v-for="header in patientDataHeaders" :key="`${index}-${header}`" class="table-cell">
-                                            {{ row[header] }}
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                            <div v-if="patientData.length > 5" class="more-data-hint">
-                                显示前5条数据，共{{ patientData.length }}条
+                        <div class="scroll-wrapper">
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th v-for="header in patientDataHeaders" :key="header" class="table-header">
+                                                {{ header }}
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="(row, index) in patientData.slice(0, 5)" :key="index">
+                                            <td v-for="header in patientDataHeaders" :key="`${index}-${header}`" class="table-cell">
+                                                {{ row[header] }}
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                <div v-if="patientData.length > 5" class="more-data-hint">
+                                    显示前5条数据，共{{ patientData.length }}条
+                                </div>
                             </div>
                         </div>
                         <div class="scroll-hint">← 左右滑动查看全部数据 →</div>
@@ -747,11 +749,13 @@ const goBack = () => {
 .diagnosis-container {
     display: flex;
     gap: 20px;
+    flex-wrap: wrap;
 }
 
 /* 左侧上传和预览区域 */
 .upload-section {
-    flex: 1;
+    flex: 1 1 450px;
+    max-width: 100%;
     background-color: var(--n-card-color);
     border-radius: 8px;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
@@ -834,6 +838,7 @@ const goBack = () => {
 
 .excel-preview {
     margin-top: 15px;
+    width: 100%;
 }
 
 .excel-preview h4 {
@@ -851,12 +856,18 @@ const goBack = () => {
     font-weight: normal;
 }
 
+.scroll-wrapper {
+    width: 100%;
+    overflow: hidden;
+    position: relative;
+}
+
 .table-container {
     border: 1px solid var(--n-border-color);
     border-radius: 4px;
     overflow-x: auto;
     overflow-y: auto;
-    max-height: 250px;
+    max-height: 180px;
     margin-bottom: 8px;
     position: relative;
     background-image: 
@@ -873,7 +884,7 @@ const goBack = () => {
 
 .table-container table {
     width: auto;
-    min-width: 100%;
+    white-space: nowrap;
     border-collapse: collapse;
 }
 
@@ -1010,7 +1021,7 @@ const goBack = () => {
 
 /* 右侧分析结果区域 */
 .result-section {
-    flex: 1;
+    flex: 1 1 450px;
     display: flex;
     flex-direction: column;
     gap: 20px;
@@ -1023,7 +1034,7 @@ const goBack = () => {
     padding: 20px;
     margin-bottom: 20px;
     height: auto;
-    /* 设置卡片的高度为自动 */
+    width: 100%;
 }
 
 .analysis-card.inactive {
@@ -1141,7 +1152,7 @@ const goBack = () => {
     list-style-type: none;
     padding: 0;
     margin: 0;
-    max-height: 500px; /* 增加高度 */
+    max-height: 450px;
     overflow-y: auto;
 }
 
@@ -1255,5 +1266,26 @@ const goBack = () => {
     font-size: 14px;
     margin-bottom: 10px;
     font-weight: 500;
+}
+
+/* 响应式设计 */
+@media screen and (max-width: 1200px) {
+    .diagnosis-container {
+        flex-direction: column;
+    }
+
+    .upload-section, 
+    .result-section {
+        width: 100%;
+        max-width: 100%;
+    }
+    
+    .table-container {
+        max-height: 150px;
+    }
+    
+    .diagnosis-result-list {
+        max-height: 300px;
+    }
 }
 </style>
