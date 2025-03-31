@@ -360,7 +360,7 @@ def format_diagnostic_statistics(stats):
     return formatted_stats
 
 # 修改main函数，添加格式化选项
-def main(file_path, db_analysis=True, statistics=False, format_stats=False):
+def main(file_path, db_analysis=True, statistics=False, format_stats=False, flag="N"):
     """
     主函数：加载基础数据，并与数据库数据结合进行分析
     
@@ -407,8 +407,8 @@ def main(file_path, db_analysis=True, statistics=False, format_stats=False):
             return stats
         else:
             # 执行原有的年龄和性别分布分析
-            age_percentages = plot_disease_age_distribution(base_df, 'N')
-            gender_percentages = plot_disease_gender_distribution(base_df, 'N')
+            age_percentages = plot_disease_age_distribution(base_df, flag)
+            gender_percentages = plot_disease_gender_distribution(base_df, flag)
             return age_percentages, gender_percentages
     except Exception as e:
         print(f"错误: {e}")

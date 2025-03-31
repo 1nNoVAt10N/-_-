@@ -11,6 +11,7 @@ from io import BytesIO
 from cut_blend import cut_blend
 from sql_APIs import get_patient_records , get_recent_records , get_fund_info
 from diagnostic_report_generator import create_diagnostic_pdf,make_styles_data
+from plot_apis import main
 
 app = Flask(__name__, static_folder='./frontend/dist')
 CORS(app)  # Enable CORS on all routes
@@ -207,6 +208,40 @@ def batch_analysis():
     os.remove(images_zip_path)
     os.remove(patient_data_path)
     return jsonify(results), 200
+
+file_path = './Traning_Dataset.xlsx'
+
+@app.route('/get_plot', methods=['POST'])
+def get_plot():
+        # 获取原始统计数据
+    stats = main(file_path, statistics=True)
+    print("\n原始诊断统计数据:")
+    print(f"总诊断数: {stats['total_diagnoses']}")
+    print(f"正常样本: {stats['normal_samples']}")
+    print(f"异常样本: {stats['abnormal_samples']}")
+    print(f"准确率: {stats['accuracy']:.2f}%")
+    
+    return jsonify(stats), 200
+@app.route('/get_plot_gender', methods=['POST'])
+def get_plot_gender():
+    # 获取分布数据
+    flag = request.get_json()['flag']
+    age_pct, gender_pct = main(file_path)
+    
+    # 打印调试信息
+    print("\n年龄分布百分比:")
+    print(age_pct)
+    print("\n性别分布百分比:")
+    print(gender_pct)
+    
+    # 将 Pandas Series 转换为字典
+    age_pct_dict = age_pct.to_dict()
+    gender_pct_dict = gender_pct.to_dict()
+    
+    result = {"age_pct": age_pct_dict, "gender_pct": gender_pct_dict}
+    return jsonify(result), 200
+
+
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def catch_all(path):
