@@ -280,7 +280,7 @@ const refreshData = () => {
 const applyFilter = () => {
   loading.value = true
 
-  axios.post('http://127.0.0.1:5000/get_plot_gender',{flag:selectedFilter}).then(response => {
+  axios.post('http://127.0.0.1:5000/get_plot_gender',{flag:selectedFilter.value}).then(response => {
     const data = response.data
     console.log('plot data:', data);
 
