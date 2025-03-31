@@ -7,14 +7,14 @@ import re
 
 def plot_disease_age_distribution(base_df, disease_type):
     """
-    将基础数据与数据库数据结合，为指定疾病类型绘制年龄分布饼图
+    将基础数据与数据库数据结合，计算指定疾病类型的年龄分布百分比
     
     参数:
     base_df: DataFrame - 基础数据，包含患者ID、年龄、性别和疾病标记
     disease_type: str - 要分析的疾病类型代码，例如 'D', 'G', 'C', 'A', 'H', 'M', 'O', 'N'
     
     返回:
-    tuple: (fig, age_percentages) - Matplotlib图像对象和疾病年龄分布百分比
+    age_percentages: Series - 疾病年龄分布百分比
     """
     try:
         # 连接数据库
@@ -87,7 +87,7 @@ def plot_disease_age_distribution(base_df, disease_type):
         # 如果没有找到患者数据，返回
         if len(disease_df) == 0:
             print(f"没有找到 '{disease_name}' 的患者记录")
-            return None, None
+            return None
         
         # 定义年龄分组
         age_bins = [0, 18, 30, 45, 60, 75, 100]
@@ -99,47 +99,11 @@ def plot_disease_age_distribution(base_df, disease_type):
         # 统计各年龄组的患者数量
         age_counts = disease_df['age_group'].value_counts().sort_index()
         
-        # 设置饼图颜色
-        colors = plt.cm.Spectral(np.linspace(0, 1, len(age_counts)))
-        
-        # 创建图形对象
-        fig, ax = plt.subplots(figsize=(10, 8))
-        
-        # 创建饼图
-        wedges, texts, autotexts = ax.pie(
-            age_counts,
-            labels=age_counts.index,
-            autopct='%1.1f%%',
-            startangle=90,
-            colors=colors,
-            shadow=False,
-            wedgeprops={'edgecolor': 'w', 'linewidth': 1}
-        )
-        
-        # 设置文本样式
-        plt.setp(autotexts, size=10, weight='bold')
-        plt.setp(texts, size=12)
-        
-        # 添加标题
-        ax.set_title(f'{disease_name}患者的年龄分布', fontsize=16, pad=20)
-        
-        # 添加图例
-        ax.legend(
-            wedges,
-            [f"{age}: {count}人" for age, count in zip(age_counts.index, age_counts.values)],
-            title="年龄组(人数)",
-            loc="center left",
-            bbox_to_anchor=(1, 0, 0.5, 1)
-        )
-        
-        ax.axis('equal')  # 保持饼图为圆形
-        fig.tight_layout()
-        
         # 计算年龄分布百分比
         age_percentages = age_counts / age_counts.sum() * 100
         
-        # 返回图形对象和年龄分布百分比
-        return fig, age_percentages
+        # 返回年龄分布百分比
+        return age_percentages
         
     except mysql.connector.Error as err:
         print(f"数据库错误: {err}")
@@ -155,14 +119,14 @@ def plot_disease_age_distribution(base_df, disease_type):
 
 def plot_disease_gender_distribution(base_df, disease_type):
     """
-    将基础数据与数据库数据结合，为指定疾病类型绘制性别分布饼图
+    将基础数据与数据库数据结合，计算指定疾病类型的性别分布百分比
     
     参数:
     base_df: DataFrame - 基础数据，包含患者ID、年龄、性别和疾病标记
     disease_type: str - 要分析的疾病类型代码，例如 'D', 'G', 'C', 'A', 'H', 'M', 'O', 'N'
     
     返回:
-    tuple: (fig, gender_percentages) - Matplotlib图像对象和疾病性别分布百分比
+    gender_percentages: Series - 疾病性别分布百分比
     """
     try:
         # 连接数据库
@@ -243,52 +207,16 @@ def plot_disease_gender_distribution(base_df, disease_type):
         # 如果没有找到患者数据，返回
         if len(disease_df) == 0:
             print(f"没有找到 '{disease_name}' 的患者记录")
-            return None, None
+            return None
         
         # 统计各性别的患者数量
         gender_counts = disease_df['Gender'].value_counts()
         
-        # 设置颜色
-        colors = ['#3498db', '#e74c3c', '#2ecc71', '#f39c12']  # 蓝、红、绿、橙
-        
-        # 创建图形对象
-        fig, ax = plt.subplots(figsize=(10, 8))
-        
-        # 创建饼图
-        wedges, texts, autotexts = ax.pie(
-            gender_counts,
-            labels=gender_counts.index,
-            autopct='%1.1f%%',
-            startangle=90,
-            colors=colors[:len(gender_counts)],
-            shadow=False,
-            wedgeprops={'edgecolor': 'w', 'linewidth': 1}
-        )
-        
-        # 设置文本样式
-        plt.setp(autotexts, size=10, weight='bold')
-        plt.setp(texts, size=12)
-        
-        # 添加标题
-        ax.set_title(f'{disease_name}患者的性别分布', fontsize=16, pad=20)
-        
-        # 添加图例
-        ax.legend(
-            wedges,
-            [f"{gender}: {count}人" for gender, count in zip(gender_counts.index, gender_counts.values)],
-            title="性别(人数)",
-            loc="center left",
-            bbox_to_anchor=(1, 0, 0.5, 1)
-        )
-        
-        ax.axis('equal')  # 保持饼图为圆形
-        fig.tight_layout()
-        
         # 计算性别分布百分比
         gender_percentages = gender_counts / gender_counts.sum() * 100
         
-        # 返回图形对象和性别分布百分比
-        return fig, gender_percentages
+        # 返回性别分布百分比
+        return gender_percentages
         
     except mysql.connector.Error as err:
         print(f"数据库错误: {err}")
@@ -302,13 +230,148 @@ def plot_disease_gender_distribution(base_df, disease_type):
 
 
 
-def main(file_path, db_analysis=True):
+def get_diagnostic_statistics(base_df=None):
+    """
+    从数据库中读取诊断统计数据，包括总诊断数、正常样本数和异常样本数
+    
+    参数:
+    base_df: DataFrame - 可选的基础数据，包含患者ID和疾病标记
+    
+    返回:
+    dict: 包含总诊断数、正常样本数、异常样本数和准确率的字典
+    """
+    try:
+        # 连接数据库
+        conn = mysql.connector.connect(
+            host="113.44.61.230",
+            user="root",
+            password="Ytb@210330!",
+            database="medical_db"
+        )
+        cursor = conn.cursor(dictionary=True)
+        
+        # 查询总诊断数
+        total_query = "SELECT COUNT(*) as total FROM record_info"
+        cursor.execute(total_query)
+        total_count = cursor.fetchone()['total']
+        
+        # 查询正常样本数
+        normal_query = """
+        SELECT COUNT(*) as normal_count 
+        FROM record_info 
+        WHERE result LIKE '%正常%'
+        """
+        cursor.execute(normal_query)
+        normal_count = cursor.fetchone()['normal_count']
+        
+        # 计算异常样本数
+        abnormal_count = total_count - normal_count
+        
+        # 如果提供了基础数据，结合数据库进行更精确的统计
+        if base_df is not None:
+            print(f"结合基础数据进行统计，基础数据共 {len(base_df)} 条记录")
+            
+            # 查询数据库中的所有记录与患者ID
+            db_query = """
+            SELECT r.record_id, r.patient_id, r.result
+            FROM record_info r
+            JOIN patient_info p ON r.patient_id = p.patient_id
+            """
+            cursor.execute(db_query)
+            db_records = cursor.fetchall()
+            
+            if db_records:
+                db_df = pd.DataFrame(db_records)
+                db_df.rename(columns={'patient_id': 'ID'}, inplace=True)
+                
+                # 合并数据库数据和基础数据
+                merged_df = pd.merge(
+                    base_df, 
+                    db_df, 
+                    on='ID', 
+                    how='outer', 
+                    suffixes=('_base', '_db')
+                )
+                
+                # 确保'N'列（正常标记）存在
+                if 'N' in merged_df.columns:
+                    # 基于数据库结果和基础数据正常标记确定正常样本
+                    merged_df['is_normal_db'] = merged_df['result'].fillna('').str.contains('正常', na=False)
+                    merged_df['is_normal_base'] = merged_df['N'] == 1
+                    
+                    # 同时考虑两个数据源
+                    normal_count_combined = merged_df[(merged_df['is_normal_db']) | (merged_df['is_normal_base'])].shape[0]
+                    total_count_combined = merged_df.shape[0]
+                    abnormal_count_combined = total_count_combined - normal_count_combined
+                    
+                    # 更新统计结果
+                    normal_count = normal_count_combined
+                    abnormal_count = abnormal_count_combined
+                    total_count = total_count_combined
+        
+        # 计算准确率 (假设正常样本被正确识别的概率)
+        # 这里的准确率计算可能需要根据实际需求调整
+        accuracy = (normal_count / total_count * 100) if total_count > 0 else 0
+        
+        # 构建结果字典
+        result = {
+            'total_diagnoses': total_count,
+            'normal_samples': normal_count,
+            'abnormal_samples': abnormal_count,
+            'accuracy': accuracy
+        }
+        
+        return result
+        
+    except mysql.connector.Error as err:
+        print(f"数据库错误: {err}")
+        raise
+    finally:
+        # 关闭连接
+        if 'cursor' in locals() and cursor:
+            cursor.close()
+        if 'conn' in locals() and conn.is_connected():
+            conn.close()
+
+def format_diagnostic_statistics(stats):
+    """
+    将诊断统计数据格式化为UI显示所需的格式
+    
+    参数:
+    stats: dict - 包含总诊断数、正常样本数、异常样本数和准确率的字典
+    
+    返回:
+    dict: 格式化后的统计数据，适合UI显示
+    """
+    # 提取数据
+    total = stats['total_diagnoses']
+    normal = stats['normal_samples']
+    abnormal = stats['abnormal_samples']
+    accuracy = stats['accuracy']
+    
+    # 格式化为适合UI显示的格式
+    formatted_stats = {
+        '总诊断数': total,
+        '正常样本': normal,
+        '异常样本': abnormal,
+        '准确率': f"{accuracy:.2f}%"
+    }
+    
+    return formatted_stats
+
+# 修改main函数，添加格式化选项
+def main(file_path, db_analysis=True, statistics=False, format_stats=False):
     """
     主函数：加载基础数据，并与数据库数据结合进行分析
     
     参数:
     file_path: str - Excel文件路径
     db_analysis: bool - 是否进行数据库分析
+    statistics: bool - 是否获取诊断统计数据
+    format_stats: bool - 是否将统计数据格式化为UI显示所需格式
+    
+    返回:
+    tuple或dict: 根据参数返回不同类型的结果
     """
     # 导入基础数据
     try:
@@ -334,20 +397,45 @@ def main(file_path, db_analysis=True):
             for col in missing_disease_cols:
                 base_df[col] = 0
         
-        fig,_ = plot_disease_age_distribution(base_df, 'N')
-        fig2,_ = plot_disease_gender_distribution(base_df, 'N')
-        return fig,fig2
+        # 根据参数执行不同的分析
+        if statistics:
+            # 获取诊断统计数据
+            stats = get_diagnostic_statistics(base_df)
+            # 如果需要格式化，则返回格式化后的数据
+            if format_stats:
+                return format_diagnostic_statistics(stats)
+            return stats
+        else:
+            # 执行原有的年龄和性别分布分析
+            age_percentages = plot_disease_age_distribution(base_df, 'N')
+            gender_percentages = plot_disease_gender_distribution(base_df, 'N')
+            return age_percentages, gender_percentages
     except Exception as e:
         print(f"错误: {e}")
         raise
 
 # 如果作为主程序运行
 if __name__ == "__main__":
-    # 设置中文显示
-    plt.rcParams['font.sans-serif'] = ['SimHei']  # 用来正常显示中文标签
-    plt.rcParams['axes.unicode_minus'] = False  # 用来正常显示负号
-    
     # 示例用法
     file_path = "F:\\BFPC\\Traning_Dataset.xlsx"  # 基础数据文件路径
-    _,x = main(file_path)
-    print(x)
+    
+    # 获取统计数据并格式化
+    formatted_stats = main(file_path, statistics=True, format_stats=True)
+    print("\n格式化后的诊断统计数据:")
+    for key, value in formatted_stats.items():
+        print(f"{key}: {value}")
+    
+    # 获取原始统计数据
+    stats = main(file_path, statistics=True)
+    print("\n原始诊断统计数据:")
+    print(f"总诊断数: {stats['total_diagnoses']}")
+    print(f"正常样本: {stats['normal_samples']}")
+    print(f"异常样本: {stats['abnormal_samples']}")
+    print(f"准确率: {stats['accuracy']:.2f}%")
+    
+    # 获取分布数据
+    age_pct, gender_pct = main(file_path)
+    print("\n年龄分布百分比:")
+    print(age_pct)
+    print("\n性别分布百分比:")
+    print(gender_pct)
