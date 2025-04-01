@@ -225,7 +225,8 @@ def get_plot():
 @app.route('/get_plot_gender', methods=['POST'])
 def get_plot_gender():
     # 获取分布数据
-    flag = request.get_json()
+    flag_data = request.get_json()
+    flag = flag_data.get('flag') 
     print("flag",flag)
     age_pct, gender_pct = main(file_path,flag=flag)
     
