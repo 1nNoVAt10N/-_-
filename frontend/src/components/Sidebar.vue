@@ -56,7 +56,7 @@ const navigateTo = (item:any) => {
           <EyeOutline />
         </NIcon>
       </div>
-      <div class="logo-text" v-show="!isCollapsed">"智"察秋毫</div>
+      <div class="logo-text" v-show="!isCollapsed">IEDD</div>
     </div>
     
     <ul class="nav-menu">
