@@ -13,8 +13,13 @@ import {
     WarningOutline,
     CheckmarkCircleOutline,
     ImageOutline,
+    CloseOutline,
+    EyeOffOutline,
 } from '@vicons/ionicons5';
-import { NIcon, NCard, NButton, NSpin, NUpload, NImage, NTag, NProgress } from 'naive-ui';
+import {
+    MachineLearningModel
+} from '@vicons/carbon';
+import { NIcon, NCard, NButton, NSpin, NUpload, NImage, NTag, NProgress,NRadioGroup } from 'naive-ui';
 
 const router = useRouter();
 const message = useMessage();
@@ -49,6 +54,28 @@ const diagnosisCard = ref({
         recommendations: [] as string[],
     },
 });
+// 添加模型选择功能
+const selectedModel = ref('single'); // 默认选择单模模型
+const modelOptions = [
+    {
+        value: 'resnet',
+        label: '传统ResNet',
+        description: '基于ResNet架构的传统深度学习模型',
+        icon: '🔬'
+    },
+    {
+        value: 'single',
+        label: '单模模型',
+        description: '专门针对单张眼底图像的优化模型',
+        icon: '👁️'
+    },
+    {
+        value: 'multi',
+        label: '多模模型',
+        description: '支持多模态输入的先进诊断模型',
+        icon: '🧠'
+    }
+]
 // 处理拖拽上传
 const handleDragOver = (e: any, side: any) => {
     e.preventDefault();
@@ -447,6 +474,33 @@ const goBack = () => {
                                 alt="右眼眼底预处理图像预览2" preview-disabled />
                         </div>
                     </div>
+                </NCard>
+                <!-- 模型选择  -->
+                <NCard class="analysis-card" style="left:40%;width: 60%;top:15%">
+                    <h2 class="section-title">
+                        <NIcon size="20" class="mr-2">
+                            <MachineLearningModel />
+                        </NIcon>
+                        模型选择
+                    </h2>
+                    <n-space vertical>
+                        <NRadioGroup v-model:value="selectedModel" size="large">
+                            <NRadio v-for="option in modelOptions" :key="option.value" :value="option.value">
+                                <NIcon size="16" class="mr-1">{{ option.icon }}</NIcon>
+                                {{ option.label }}
+                            </NRadio>
+                        </NRadioGroup>
+                    </n-space>
+                    <div class="model-description" style="margin-top: 20px;margin-bottom: 20px;">
+                        {{ modelOptions.find(option => option.value === selectedModel)?.description }}
+                    </div>
+                    <NButton type="primary" size="small" class="mt" @click="startAnalysis">
+                        <NIcon size="16" class="mr-1">
+                            <CheckmarkCircleOutline />
+                        </NIcon>
+                        确认选择
+                    </NButton>
+                    
                 </NCard>
             </div>
             <!-- 右侧分析结果区域 -->
